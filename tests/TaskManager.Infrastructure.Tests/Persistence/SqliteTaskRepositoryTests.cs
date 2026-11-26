@@ -196,6 +196,66 @@ public sealed class SqliteTaskRepositoryTests : IAsyncLifetime
         loaded!.Priority.Should().Be(TaskPriority.High);
     }
 
+    // ---------- Bulk ----------
+
+    [Fact]
+    public async Task GetByIds_returns_the_existing_tasks_and_skips_unknown_ids()
+    {
+        var first = NewTask("First");
+        var second = NewTask("Second", owner: _other);
+        var notAsked = NewTask("Not asked");
+        await _sut.AddAsync(first);
+        await _sut.AddAsync(second);
+        await _sut.AddAsync(notAsked);
+
+        var loaded = await _sut.GetByIdsAsync([first.Id, second.Id, Guid.NewGuid()]);
+
+        loaded.Select(t => t.Id).Should().BeEquivalentTo([first.Id, second.Id]);
+        loaded.Single(t => t.Id == first.Id).Should().BeEquivalentTo(first);
+    }
+
+    [Fact]
+    public async Task GetByIds_with_no_ids_returns_nothing()
+    {
+        await _sut.AddAsync(NewTask());
+
+        var loaded = await _sut.GetByIdsAsync([]);
+
+        loaded.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task UpdateMany_saves_every_task()
+    {
+        var first = NewTask("First");
+        var second = NewTask("Second");
+        await _sut.AddAsync(first);
+        await _sut.AddAsync(second);
+        first.ChangeStatus(TaskItemStatus.Done, Now.AddHours(1));
+        second.ChangeStatus(TaskItemStatus.Done, Now.AddHours(1));
+
+        var saved = await _sut.UpdateManyAsync([first, second]);
+
+        saved.Should().BeTrue();
+        (await _sut.GetByIdAsync(first.Id)).Should().BeEquivalentTo(first);
+        (await _sut.GetByIdAsync(second.Id)).Should().BeEquivalentTo(second);
+    }
+
+    [Fact]
+    public async Task UpdateMany_with_a_missing_task_rolls_back_and_saves_nothing()
+    {
+        var stored = NewTask("Stored");
+        var neverSaved = NewTask("Never saved");
+        await _sut.AddAsync(stored);
+        stored.ChangeStatus(TaskItemStatus.Done, Now.AddHours(1));
+        neverSaved.ChangeStatus(TaskItemStatus.Done, Now.AddHours(1));
+
+        var saved = await _sut.UpdateManyAsync([stored, neverSaved]);
+
+        saved.Should().BeFalse();
+        (await _sut.GetByIdAsync(stored.Id))!.Status.Should().Be(TaskItemStatus.Todo);
+    }
+
     [Fact]
     public async Task Initializer_adds_the_priority_column_to_an_older_database()
     {

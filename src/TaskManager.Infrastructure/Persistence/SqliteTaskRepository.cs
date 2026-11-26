@@ -13,6 +13,18 @@ public sealed class SqliteTaskRepository(SqliteConnectionFactory connectionFacto
     private const string SelectColumns =
         "SELECT Id, UserId, Title, Description, Status, DueDate, CreatedAt, UpdatedAt, Priority FROM Tasks";
 
+    // Owner and creation date are immutable, so they are not part of the UPDATE.
+    private const string UpdateSql = """
+        UPDATE Tasks
+        SET Title = $title,
+            Description = $description,
+            Status = $status,
+            Priority = $priority,
+            DueDate = $dueDate,
+            UpdatedAt = $updatedAt
+        WHERE Id = $id;
+        """;
+
     public async Task<TaskItem?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         await using var connection = await connectionFactory.OpenAsync(cancellationToken);
@@ -72,20 +84,69 @@ public sealed class SqliteTaskRepository(SqliteConnectionFactory connectionFacto
         await using var connection = await connectionFactory.OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
 
-        // Owner and creation date are immutable, so they are not part of the UPDATE.
-        command.CommandText = """
-            UPDATE Tasks
-            SET Title = $title,
-                Description = $description,
-                Status = $status,
-                Priority = $priority,
-                DueDate = $dueDate,
-                UpdatedAt = $updatedAt
-            WHERE Id = $id;
-            """;
+        command.CommandText = UpdateSql;
         AddParameters(command, task);
 
         return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
+    }
+
+    public async Task<IReadOnlyList<TaskItem>> GetByIdsAsync(
+        IReadOnlyCollection<Guid> ids,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(ids);
+        if (ids.Count == 0)
+        {
+            return [];
+        }
+
+        await using var connection = await connectionFactory.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+
+        // Only the parameter *names* are generated ($id0, $id1, ...); every value is still a parameter.
+        var names = ids.Select((id, i) =>
+        {
+            var name = $"$id{i}";
+            command.With(name, SqliteValues.ToDb(id));
+            return name;
+        }).ToList();
+        command.CommandText = $"{SelectColumns} WHERE Id IN ({string.Join(", ", names)});";
+
+        var results = new List<TaskItem>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            results.Add(Map(reader));
+        }
+
+        return results;
+    }
+
+    public async Task<bool> UpdateManyAsync(
+        IReadOnlyCollection<TaskItem> tasks,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(tasks);
+        await using var connection = await connectionFactory.OpenAsync(cancellationToken);
+        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
+
+        foreach (var task in tasks)
+        {
+            await using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = UpdateSql;
+            AddParameters(command, task);
+
+            if (await command.ExecuteNonQueryAsync(cancellationToken) != 1)
+            {
+                // One task is gone: undo the ones already written, so the change is all or nothing.
+                await transaction.RollbackAsync(cancellationToken);
+                return false;
+            }
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+        return true;
     }
 
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)

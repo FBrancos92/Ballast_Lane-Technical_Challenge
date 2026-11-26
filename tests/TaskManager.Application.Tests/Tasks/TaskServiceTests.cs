@@ -20,6 +20,7 @@ public class TaskServiceTests
         _sut = new TaskService(_repository, _time);
         _repository.UpdateAsync(Arg.Any<TaskItem>(), Arg.Any<CancellationToken>()).Returns(true);
         _repository.DeleteAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(true);
+        _repository.UpdateManyAsync(Arg.Any<IReadOnlyCollection<TaskItem>>(), Arg.Any<CancellationToken>()).Returns(true);
     }
 
     private TaskItem ExistingTask(Guid? ownerId = null, string title = "Existing") =>
@@ -229,6 +230,133 @@ public class TaskServiceTests
     public async Task Delete_unknown_task_throws_not_found()
     {
         var act = () => _sut.DeleteAsync(_userId, Guid.NewGuid());
+
+        await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    // ---------- Bulk status change ----------
+
+    /// <summary>The repository returns whichever of these tasks were asked for, like the real one.</summary>
+    private void StoredMany(params TaskItem[] stored) =>
+        _repository.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                var ids = call.Arg<IReadOnlyCollection<Guid>>();
+                return Task.FromResult<IReadOnlyList<TaskItem>>(stored.Where(t => ids.Contains(t.Id)).ToList());
+            });
+
+    [Fact]
+    public async Task UpdateStatus_changes_every_selected_task_and_saves_them_together()
+    {
+        var first = ExistingTask(title: "First");
+        var second = ExistingTask(title: "Second");
+        StoredMany(first, second);
+        _time.Now = _time.Now.AddMinutes(5);
+
+        var result = await _sut.UpdateStatusAsync(_userId, new UpdateTasksStatusRequest([first.Id, second.Id], TaskItemStatus.Done));
+
+        result.Should().HaveCount(2).And.OnlyContain(t => t.Status == TaskItemStatus.Done && t.UpdatedAt == _time.Now);
+        await _repository.Received(1).UpdateManyAsync(
+            Arg.Is<IReadOnlyCollection<TaskItem>>(saved => saved.Count == 2 && saved.All(t => t.Status == TaskItemStatus.Done)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UpdateStatus_ignores_duplicate_ids()
+    {
+        var task = ExistingTask();
+        StoredMany(task);
+
+        var result = await _sut.UpdateStatusAsync(_userId, new UpdateTasksStatusRequest([task.Id, task.Id], TaskItemStatus.InProgress));
+
+        result.Should().ContainSingle().Which.Status.Should().Be(TaskItemStatus.InProgress);
+    }
+
+    [Fact]
+    public async Task UpdateStatus_without_ids_fails_and_saves_nothing()
+    {
+        var act = () => _sut.UpdateStatusAsync(_userId, new UpdateTasksStatusRequest([], TaskItemStatus.Done));
+
+        (await act.Should().ThrowAsync<DomainValidationException>()).Which.Errors.Should().ContainKey("Ids");
+        await _repository.DidNotReceiveWithAnyArgs().UpdateManyAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task UpdateStatus_with_null_ids_fails()
+    {
+        var act = () => _sut.UpdateStatusAsync(_userId, new UpdateTasksStatusRequest(null, TaskItemStatus.Done));
+
+        (await act.Should().ThrowAsync<DomainValidationException>()).Which.Errors.Should().ContainKey("Ids");
+    }
+
+    [Fact]
+    public async Task UpdateStatus_with_more_than_the_limit_fails()
+    {
+        var ids = Enumerable.Range(0, TaskService.MaxTasksPerStatusUpdate + 1).Select(_ => Guid.NewGuid()).ToList();
+
+        var act = () => _sut.UpdateStatusAsync(_userId, new UpdateTasksStatusRequest(ids, TaskItemStatus.Done));
+
+        (await act.Should().ThrowAsync<DomainValidationException>()).Which.Errors.Should().ContainKey("Ids");
+        await _repository.DidNotReceiveWithAnyArgs().GetByIdsAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task UpdateStatus_with_undefined_status_fails_and_saves_nothing()
+    {
+        var task = ExistingTask();
+        StoredMany(task);
+
+        var act = () => _sut.UpdateStatusAsync(_userId, new UpdateTasksStatusRequest([task.Id], (TaskItemStatus)42));
+
+        (await act.Should().ThrowAsync<DomainValidationException>()).Which.Errors.Should().ContainKey("Status");
+        await _repository.DidNotReceiveWithAnyArgs().UpdateManyAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task UpdateStatus_including_another_users_task_throws_not_found_and_saves_nothing()
+    {
+        var mine = ExistingTask();
+        var theirs = ExistingTask(ownerId: Guid.NewGuid());
+        StoredMany(mine, theirs);
+
+        var act = () => _sut.UpdateStatusAsync(_userId, new UpdateTasksStatusRequest([mine.Id, theirs.Id], TaskItemStatus.Done));
+
+        await act.Should().ThrowAsync<NotFoundException>();
+        await _repository.DidNotReceiveWithAnyArgs().UpdateManyAsync(default!, default);
+        mine.Status.Should().Be(TaskItemStatus.Todo);
+    }
+
+    [Fact]
+    public async Task UpdateStatus_including_an_unknown_task_throws_not_found_and_saves_nothing()
+    {
+        var mine = ExistingTask();
+        StoredMany(mine);
+
+        var act = () => _sut.UpdateStatusAsync(_userId, new UpdateTasksStatusRequest([mine.Id, Guid.NewGuid()], TaskItemStatus.Done));
+
+        await act.Should().ThrowAsync<NotFoundException>();
+        await _repository.DidNotReceiveWithAnyArgs().UpdateManyAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task UpdateStatus_with_an_empty_id_throws_not_found()
+    {
+        var mine = ExistingTask();
+        StoredMany(mine);
+
+        var act = () => _sut.UpdateStatusAsync(_userId, new UpdateTasksStatusRequest([mine.Id, Guid.Empty], TaskItemStatus.Done));
+
+        await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async Task UpdateStatus_when_a_task_is_deleted_concurrently_throws_not_found()
+    {
+        var task = ExistingTask();
+        StoredMany(task);
+        _repository.UpdateManyAsync(Arg.Any<IReadOnlyCollection<TaskItem>>(), Arg.Any<CancellationToken>()).Returns(false);
+
+        var act = () => _sut.UpdateStatusAsync(_userId, new UpdateTasksStatusRequest([task.Id], TaskItemStatus.Done));
 
         await act.Should().ThrowAsync<NotFoundException>();
     }

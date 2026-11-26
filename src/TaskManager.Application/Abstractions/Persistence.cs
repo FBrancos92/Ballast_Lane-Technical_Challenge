@@ -11,6 +11,9 @@ public interface ITaskRepository
 {
     Task<TaskItem?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
+    /// <summary>The tasks with these ids that exist, whoever owns them. Missing ids are left out.</summary>
+    Task<IReadOnlyList<TaskItem>> GetByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default);
+
     /// <summary>Tasks for one user, soonest due first (tasks without a due date last).</summary>
     Task<IReadOnlyList<TaskItem>> ListByUserAsync(
         Guid userId,
@@ -21,6 +24,10 @@ public interface ITaskRepository
 
     /// <returns>False if the task no longer exists.</returns>
     Task<bool> UpdateAsync(TaskItem task, CancellationToken cancellationToken = default);
+
+    /// <summary>Saves several tasks in one transaction.</summary>
+    /// <returns>False, with nothing saved, if any of the tasks no longer exists.</returns>
+    Task<bool> UpdateManyAsync(IReadOnlyCollection<TaskItem> tasks, CancellationToken cancellationToken = default);
 
     /// <returns>False if the task did not exist.</returns>
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
