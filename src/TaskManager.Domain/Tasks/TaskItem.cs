@@ -114,10 +114,11 @@ public sealed class TaskItem
         string title,
         string? description,
         TaskItemStatus status,
+        TaskPriority priority,
         DateOnly? dueDate,
         DateTimeOffset createdAt,
         DateTimeOffset updatedAt) =>
-        new(id, userId, title, description, status, TaskPriority.Medium, dueDate, createdAt, updatedAt);
+        new(id, userId, title, description, status, priority, dueDate, createdAt, updatedAt);
 
     private static (string Title, string? Description) ValidateFields(
         ValidationErrors errors,

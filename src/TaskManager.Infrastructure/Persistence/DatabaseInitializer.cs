@@ -1,3 +1,5 @@
+using Microsoft.Data.Sqlite;
+
 namespace TaskManager.Infrastructure.Persistence;
 
 /// <summary>
@@ -23,6 +25,7 @@ public sealed class DatabaseInitializer(SqliteConnectionFactory connectionFactor
             Title       TEXT NOT NULL,
             Description TEXT NULL,
             Status      TEXT NOT NULL CHECK (Status IN ('Todo', 'InProgress', 'Done')),
+            Priority    TEXT NOT NULL DEFAULT 'Medium' CHECK (Priority IN ('Low', 'Medium', 'High')),
             DueDate     TEXT NULL,
             CreatedAt   TEXT NOT NULL,
             UpdatedAt   TEXT NOT NULL
@@ -37,5 +40,26 @@ public sealed class DatabaseInitializer(SqliteConnectionFactory connectionFactor
         await using var command = connection.CreateCommand();
         command.CommandText = Schema;
         await command.ExecuteNonQueryAsync(cancellationToken);
+
+        await AddPriorityColumnIfMissingAsync(connection, cancellationToken);
+    }
+
+    /// <summary>
+    /// Migration for databases created before tasks had a priority. SQLite has no
+    /// "ADD COLUMN IF NOT EXISTS", so check the table's columns first. Existing tasks get Medium.
+    /// </summary>
+    private static async Task AddPriorityColumnIfMissingAsync(SqliteConnection connection, CancellationToken cancellationToken)
+    {
+        await using var check = connection.CreateCommand();
+        check.CommandText = "SELECT COUNT(*) FROM pragma_table_info('Tasks') WHERE name = 'Priority';";
+        if (Convert.ToInt64(await check.ExecuteScalarAsync(cancellationToken)) > 0)
+        {
+            return;
+        }
+
+        await using var alter = connection.CreateCommand();
+        alter.CommandText =
+            "ALTER TABLE Tasks ADD COLUMN Priority TEXT NOT NULL DEFAULT 'Medium' CHECK (Priority IN ('Low', 'Medium', 'High'));";
+        await alter.ExecuteNonQueryAsync(cancellationToken);
     }
 }

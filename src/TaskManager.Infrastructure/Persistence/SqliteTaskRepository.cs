@@ -11,7 +11,7 @@ namespace TaskManager.Infrastructure.Persistence;
 public sealed class SqliteTaskRepository(SqliteConnectionFactory connectionFactory) : ITaskRepository
 {
     private const string SelectColumns =
-        "SELECT Id, UserId, Title, Description, Status, DueDate, CreatedAt, UpdatedAt FROM Tasks";
+        "SELECT Id, UserId, Title, Description, Status, DueDate, CreatedAt, UpdatedAt, Priority FROM Tasks";
 
     public async Task<TaskItem?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
@@ -56,8 +56,8 @@ public sealed class SqliteTaskRepository(SqliteConnectionFactory connectionFacto
         await using var connection = await connectionFactory.OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         command.CommandText = """
-            INSERT INTO Tasks (Id, UserId, Title, Description, Status, DueDate, CreatedAt, UpdatedAt)
-            VALUES ($id, $userId, $title, $description, $status, $dueDate, $createdAt, $updatedAt);
+            INSERT INTO Tasks (Id, UserId, Title, Description, Status, Priority, DueDate, CreatedAt, UpdatedAt)
+            VALUES ($id, $userId, $title, $description, $status, $priority, $dueDate, $createdAt, $updatedAt);
             """;
         AddParameters(command, task);
         command.With("$userId", SqliteValues.ToDb(task.UserId));
@@ -78,6 +78,7 @@ public sealed class SqliteTaskRepository(SqliteConnectionFactory connectionFacto
             SET Title = $title,
                 Description = $description,
                 Status = $status,
+                Priority = $priority,
                 DueDate = $dueDate,
                 UpdatedAt = $updatedAt
             WHERE Id = $id;
@@ -103,6 +104,7 @@ public sealed class SqliteTaskRepository(SqliteConnectionFactory connectionFacto
             .With("$title", task.Title)
             .With("$description", SqliteValues.ToDb(task.Description))
             .With("$status", task.Status.ToString())
+            .With("$priority", task.Priority.ToString())
             .With("$dueDate", SqliteValues.ToDb(task.DueDate))
             .With("$updatedAt", SqliteValues.ToDb(task.UpdatedAt));
 
@@ -112,6 +114,7 @@ public sealed class SqliteTaskRepository(SqliteConnectionFactory connectionFacto
         title: reader.GetString(2),
         description: reader.ReadNullableString(3),
         status: Enum.Parse<TaskItemStatus>(reader.GetString(4)),
+        priority: Enum.Parse<TaskPriority>(reader.GetString(8)),
         dueDate: reader.ReadNullableDateOnly(5),
         createdAt: reader.ReadDateTimeOffset(6),
         updatedAt: reader.ReadDateTimeOffset(7));
