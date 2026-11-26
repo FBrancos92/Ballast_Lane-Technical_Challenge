@@ -82,6 +82,12 @@ describe('TaskForm', () => {
     })
   })
 
+  it('never offers past dates in the date picker, even when editing an overdue task', () => {
+    renderForm({ initial: existing, submitLabel: 'Save changes' })
+
+    expect(screen.getByLabelText('Due date')).toHaveAttribute('min', todayIso())
+  })
+
   it('shows field errors returned by the API', () => {
     renderForm({ serverErrors: { title: ['Title must be at most 200 characters.'] } })
 

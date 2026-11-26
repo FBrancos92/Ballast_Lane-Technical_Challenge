@@ -141,7 +141,7 @@ export function TaskForm({ initial, submitLabel, submitting, serverErrors = {}, 
               id={id}
               type="date"
               value={dueDate}
-              min={dueDateChanged || !initial ? today : undefined}
+              min={today}
               onChange={(e) => setDueDate(e.target.value)}
               aria-describedby={describedBy}
               aria-invalid={invalid}
