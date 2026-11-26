@@ -10,7 +10,7 @@ A full-stack task manager built for the Ballast Lane .NET technical exercise.
 Related docs:
 
 - [docs/USER_STORY.md](docs/USER_STORY.md): the user story and acceptance criteria that drove development
-- [docs/GENAI.md](docs/GENAI.md): the GenAI section (prompt, output, how it was validated and corrected)
+- [GENAI.md](GENAI.md): the GenAI section, at the repo root as the brief asks (prompt, output, how it was validated and corrected)
 
 ---
 

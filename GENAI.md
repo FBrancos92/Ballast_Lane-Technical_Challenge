@@ -58,7 +58,7 @@ Then I worked in small steps (domain → application → infrastructure → API 
 
 The full code is in this repo. Three excerpts that show the shape:
 
-**Use case with the ownership rule** ([TaskService.cs](../src/TaskManager.Application/Tasks/TaskService.cs))
+**Use case with the ownership rule** ([TaskService.cs](src/TaskManager.Application/Tasks/TaskService.cs))
 
 ```csharp
 public async Task<TaskDto> UpdateAsync(Guid userId, Guid taskId, UpdateTaskRequest request, CancellationToken ct = default)
@@ -81,7 +81,7 @@ private async Task<TaskItem> GetOwnedAsync(Guid userId, Guid taskId, Cancellatio
 }
 ```
 
-**Hand-written repository** ([SqliteTaskRepository.cs](../src/TaskManager.Infrastructure/Persistence/SqliteTaskRepository.cs))
+**Hand-written repository** ([SqliteTaskRepository.cs](src/TaskManager.Infrastructure/Persistence/SqliteTaskRepository.cs))
 
 ```csharp
 command.CommandText = $"""
@@ -94,7 +94,7 @@ command.With("$userId", SqliteValues.ToDb(userId));
 command.With("$status", status is { } s ? s.ToString() : DBNull.Value);
 ```
 
-**Thin controller** ([TasksController.cs](../src/TaskManager.Api/Controllers/TasksController.cs))
+**Thin controller** ([TasksController.cs](src/TaskManager.Api/Controllers/TasksController.cs))
 
 ```csharp
 [HttpPost]
