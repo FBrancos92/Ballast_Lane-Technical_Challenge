@@ -1,7 +1,7 @@
 # User story
 
 > **As a** busy professional juggling several commitments,
-> **I want to** keep a private list of tasks with a status and a due date,
+> **I want to** keep a private list of tasks with a status, a priority and a due date,
 > **so that** I can see at a glance what to work on next and nothing slips past its deadline.
 
 ## Acceptance criteria
@@ -25,11 +25,12 @@
 9. I can **delete** a task after confirming.
 10. Open tasks past their due date are highlighted as **overdue**.
 11. I only ever see and change **my own** tasks. Another user's task behaves as if it doesn't exist.
+12. I can give a task a **priority**: *Low*, *Medium* or *High* (defaults to *Medium*). I choose it when I create or edit a task, each card shows it as a badge, and marking a task done keeps its priority. Tasks created before priorities existed show as *Medium*.
 
 ### Quality
 
-12. Invalid input shows a clear message next to the field it concerns.
-13. The app works on a phone and on a desktop.
+13. Invalid input shows a clear message next to the field it concerns.
+14. The app works on a phone and on a desktop.
 
 ## Mapping to the code
 
@@ -42,4 +43,5 @@
 | 6 | `SqliteTaskRepository.ListByUserAsync` | `SqliteTaskRepositoryTests`, `TaskEndpointsTests` |
 | 8, 9, 10 | `TaskCard`, `TasksPage` | `TaskCard.test.tsx` |
 | 11 | `TaskService.GetOwnedAsync`, JWT `sub` claim | `TaskServiceTests`, `TaskEndpointsTests.Users_cannot_see_or_change_each_others_tasks` |
-| 12 | `ApiExceptionHandler`, `FormField`, `TaskForm` | `TaskEndpointsTests`, `TaskForm.test.tsx` |
+| 12 | `TaskItem.Create/Update`, `TaskService`, `SqliteTaskRepository`, `DatabaseInitializer` (migration), `TaskForm`, `TaskCard`, `TasksPage` | `TaskItemTests`, `TaskServiceTests`, `SqliteTaskRepositoryTests`, `TaskEndpointsTests`, `TaskForm.test.tsx`, `TaskCard.test.tsx` |
+| 13 | `ApiExceptionHandler`, `FormField`, `TaskForm` | `TaskEndpointsTests`, `TaskForm.test.tsx` |
