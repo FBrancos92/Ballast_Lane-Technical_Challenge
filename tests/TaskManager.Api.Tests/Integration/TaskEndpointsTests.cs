@@ -1,0 +1,146 @@
+using System.Net;
+using System.Net.Http.Json;
+using System.Text;
+using FluentAssertions;
+using Microsoft.AspNetCore.Mvc;
+using TaskManager.Application.Tasks;
+using TaskManager.Domain.Tasks;
+using TaskManager.Infrastructure.Persistence;
+
+namespace TaskManager.Api.Tests.Integration;
+
+/// <summary>End-to-end through HTTP, auth, controllers, services, SQL and back.</summary>
+public class TaskEndpointsTests(ApiFactory factory) : IClassFixture<ApiFactory>
+{
+    private static readonly DateOnly Tomorrow = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(1);
+
+    private Task<HttpClient> DemoClientAsync() =>
+        factory.CreateAuthenticatedClientAsync(DataSeeder.DemoUsername, DataSeeder.DemoPassword);
+
+    private Task<HttpClient> AlexClientAsync() =>
+        factory.CreateAuthenticatedClientAsync(DataSeeder.SecondUsername, DataSeeder.SecondPassword);
+
+    private static async Task<TaskDto> CreateAsync(HttpClient client, string title = "Integration task")
+    {
+        var response = await client.PostAsJsonAsync(
+            "/api/tasks",
+            new CreateTaskRequest(title, "Created by a test", TaskItemStatus.Todo, Tomorrow),
+            ApiFactory.Json);
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        return (await response.Content.ReadFromJsonAsync<TaskDto>(ApiFactory.Json))!;
+    }
+
+    [Fact]
+    public async Task Tasks_require_authentication()
+    {
+        var response = await factory.CreateClient().GetAsync("/api/tasks");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Seeded_user_sees_their_seeded_tasks()
+    {
+        var client = await DemoClientAsync();
+
+        var tasks = await client.GetFromJsonAsync<List<TaskDto>>("/api/tasks", ApiFactory.Json);
+
+        tasks.Should().Contain(t => t.Title == "Prepare interview presentation");
+    }
+
+    [Fact]
+    public async Task Full_crud_lifecycle()
+    {
+        var client = await DemoClientAsync();
+
+        // Create
+        var create = await client.PostAsJsonAsync(
+            "/api/tasks",
+            new CreateTaskRequest("Lifecycle", "desc", null, Tomorrow),
+            ApiFactory.Json);
+        create.StatusCode.Should().Be(HttpStatusCode.Created);
+        var created = (await create.Content.ReadFromJsonAsync<TaskDto>(ApiFactory.Json))!;
+        create.Headers.Location!.AbsolutePath.Should().Be($"/api/tasks/{created.Id}");
+        created.Status.Should().Be(TaskItemStatus.Todo);
+
+        // Read
+        var fetched = await client.GetFromJsonAsync<TaskDto>($"/api/tasks/{created.Id}", ApiFactory.Json);
+        fetched.Should().BeEquivalentTo(created);
+
+        // Update
+        var update = await client.PutAsJsonAsync(
+            $"/api/tasks/{created.Id}",
+            new UpdateTaskRequest("Lifecycle (done)", null, TaskItemStatus.Done, Tomorrow),
+            ApiFactory.Json);
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updated = (await update.Content.ReadFromJsonAsync<TaskDto>(ApiFactory.Json))!;
+        updated.Title.Should().Be("Lifecycle (done)");
+        updated.Status.Should().Be(TaskItemStatus.Done);
+        updated.Description.Should().BeNull();
+
+        // Filtered list
+        var done = await client.GetFromJsonAsync<List<TaskDto>>("/api/tasks?status=Done", ApiFactory.Json);
+        done.Should().Contain(t => t.Id == created.Id).And.OnlyContain(t => t.Status == TaskItemStatus.Done);
+
+        // Delete
+        (await client.DeleteAsync($"/api/tasks/{created.Id}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await client.GetAsync($"/api/tasks/{created.Id}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await client.DeleteAsync($"/api/tasks/{created.Id}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Invalid_task_returns_400_with_every_field_error()
+    {
+        var client = await DemoClientAsync();
+
+        var response = await client.PostAsJsonAsync(
+            "/api/tasks",
+            new CreateTaskRequest("", null, null, new DateOnly(2000, 1, 1)),
+            ApiFactory.Json);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(ApiFactory.Json);
+        problem!.Errors.Keys.Should().BeEquivalentTo("title", "dueDate");
+    }
+
+    [Fact]
+    public async Task Unknown_status_value_returns_400()
+    {
+        var client = await DemoClientAsync();
+        using var body = new StringContent("""{ "title": "x", "status": "Archived" }""", Encoding.UTF8, "application/json");
+
+        var response = await client.PostAsync("/api/tasks", body);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Users_cannot_see_or_change_each_others_tasks()
+    {
+        var demo = await DemoClientAsync();
+        var alex = await AlexClientAsync();
+        var demoTask = await CreateAsync(demo, "Demo's secret");
+
+        (await alex.GetAsync($"/api/tasks/{demoTask.Id}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await alex.PutAsJsonAsync(
+                $"/api/tasks/{demoTask.Id}",
+                new UpdateTaskRequest("Hijacked", null, TaskItemStatus.Done, null),
+                ApiFactory.Json))
+            .StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await alex.DeleteAsync($"/api/tasks/{demoTask.Id}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        var alexTasks = await alex.GetFromJsonAsync<List<TaskDto>>("/api/tasks", ApiFactory.Json);
+        alexTasks.Should().NotContain(t => t.Id == demoTask.Id);
+
+        var stillThere = await demo.GetFromJsonAsync<TaskDto>($"/api/tasks/{demoTask.Id}", ApiFactory.Json);
+        stillThere!.Title.Should().Be("Demo's secret");
+    }
+
+    [Fact]
+    public async Task Malformed_id_in_route_returns_404()
+    {
+        var client = await DemoClientAsync();
+
+        (await client.GetAsync("/api/tasks/not-a-guid")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+}

@@ -1,0 +1,39 @@
+# Run requests one by one in Visual Studio / VS Code (REST Client) / Rider.
+@baseUrl = http://localhost:5193
+
+### Public: health check
+GET {{baseUrl}}/api/health
+
+### Public: log in as the seeded demo user. Copy "token" from the response into @token below.
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{ "username": "demo", "password": "Demo1234!" }
+
+###
+@token = paste-token-here
+
+### Protected: without a token this returns 401
+GET {{baseUrl}}/api/tasks
+
+### Protected: current user
+GET {{baseUrl}}/api/users/me
+Authorization: Bearer {{token}}
+
+### List tasks (optionally ?status=Todo|InProgress|Done)
+GET {{baseUrl}}/api/tasks
+Authorization: Bearer {{token}}
+
+### Create a task
+POST {{baseUrl}}/api/tasks
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "title": "Try the API", "description": "From the .http file", "status": "Todo", "dueDate": null }
+
+### Validation error (400)
+POST {{baseUrl}}/api/tasks
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "title": "", "dueDate": "2000-01-01" }
