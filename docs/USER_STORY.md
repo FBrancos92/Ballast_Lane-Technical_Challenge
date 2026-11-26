@@ -26,11 +26,12 @@
 10. Open tasks past their due date are highlighted as **overdue**.
 11. I only ever see and change **my own** tasks. Another user's task behaves as if it doesn't exist.
 12. I can give a task a **priority**: *Low*, *Medium* or *High* (defaults to *Medium*). I choose it when I create or edit a task, each card shows it as a badge, and marking a task done keeps its priority. Tasks created before priorities existed show as *Medium*.
+13. I can **select several tasks** and give them all the same status in one action. Either every selected task changes or none does, and only tasks shown under the current filter are changed.
 
 ### Quality
 
-13. Invalid input shows a clear message next to the field it concerns.
-14. The app works on a phone and on a desktop.
+14. Invalid input shows a clear message next to the field it concerns.
+15. The app works on a phone and on a desktop.
 
 ## Mapping to the code
 
@@ -44,4 +45,5 @@
 | 8, 9, 10 | `TaskCard`, `TasksPage` | `TaskCard.test.tsx` |
 | 11 | `TaskService.GetOwnedAsync`, JWT `sub` claim | `TaskServiceTests`, `TaskEndpointsTests.Users_cannot_see_or_change_each_others_tasks` |
 | 12 | `TaskItem.Create/Update`, `TaskService`, `SqliteTaskRepository`, `DatabaseInitializer` (migration), `TaskForm`, `TaskCard`, `TasksPage` | `TaskItemTests`, `TaskServiceTests`, `SqliteTaskRepositoryTests`, `TaskEndpointsTests`, `TaskForm.test.tsx`, `TaskCard.test.tsx` |
-| 13 | `ApiExceptionHandler`, `FormField`, `TaskForm` | `TaskEndpointsTests`, `TaskForm.test.tsx` |
+| 13 | `TaskItem.ChangeStatus`, `TaskService.UpdateStatusAsync`, `SqliteTaskRepository.UpdateManyAsync` (transaction), `PATCH /api/tasks/status`, `BulkStatusBar`, `TaskCard`, `TasksPage` | `TaskItemTests`, `TaskServiceTests`, `SqliteTaskRepositoryTests`, `TasksControllerTests`, `TaskEndpointsTests`, `BulkStatusBar.test.tsx`, `TaskCard.test.tsx` |
+| 14 | `ApiExceptionHandler`, `FormField`, `TaskForm` | `TaskEndpointsTests`, `TaskForm.test.tsx` |
