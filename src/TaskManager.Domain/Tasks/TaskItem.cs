@@ -107,6 +107,23 @@ public sealed class TaskItem
         UpdatedAt = now;
     }
 
+    /// <summary>
+    /// Changes only the status, for example from a bulk action. The other fields are untouched,
+    /// so an overdue task can still be closed without moving its due date.
+    /// </summary>
+    public void ChangeStatus(TaskItemStatus status, DateTimeOffset now)
+    {
+        if (!Enum.IsDefined(status))
+        {
+            var errors = new ValidationErrors();
+            errors.Add(nameof(Status), "Status is not valid.");
+            errors.ThrowIfAny();
+        }
+
+        Status = status;
+        UpdatedAt = now;
+    }
+
     /// <summary>Rebuilds an entity from storage. No validation: data was valid when it was saved.</summary>
     public static TaskItem Rehydrate(
         Guid id,
