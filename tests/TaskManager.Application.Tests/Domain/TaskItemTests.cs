@@ -175,4 +175,35 @@ public class TaskItemTests
 
         act.Should().Throw<DomainValidationException>().Which.Errors.Should().ContainKey("Priority");
     }
+        
+    [Fact]
+    public void Update_changes_the_priority()
+    {
+        var task = TaskItem.Create(UserId, "Title", null, TaskItemStatus.Todo, null, Now, TaskPriority.Low);
+
+        task.Update("Title", null, TaskItemStatus.Todo, null, Now, TaskPriority.High);
+
+        task.Priority.Should().Be(TaskPriority.High);
+    }
+
+    [Fact]
+    public void Update_without_priority_keeps_the_current_one()
+    {
+        var task = TaskItem.Create(UserId, "Title", null, TaskItemStatus.Todo, null, Now, TaskPriority.High);
+
+        task.Update("New title", null, TaskItemStatus.Todo, null, Now);
+
+        task.Priority.Should().Be(TaskPriority.High);
+    }
+
+    [Fact]
+    public void Update_with_undefined_priority_fails_and_leaves_the_task_unchanged()
+    {
+        var task = TaskItem.Create(UserId, "Title", null, TaskItemStatus.Todo, null, Now, TaskPriority.Low);
+
+        var act = () => task.Update("Title", null, TaskItemStatus.Todo, null, Now, (TaskPriority)42);
+
+        act.Should().Throw<DomainValidationException>().Which.Errors.Should().ContainKey("Priority");
+        task.Priority.Should().Be(TaskPriority.Low);
+    }
 }
