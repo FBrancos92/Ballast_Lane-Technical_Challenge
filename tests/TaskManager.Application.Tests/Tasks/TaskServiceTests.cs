@@ -108,6 +108,26 @@ public class TaskServiceTests
         await _repository.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
     }
 
+        [Fact]
+    public async Task Create_passes_the_priority_to_the_task()
+    {
+        var request = new CreateTaskRequest("Title", null, null, null, TaskPriority.High);
+
+        var result = await _sut.CreateAsync(_userId, request);
+
+        result.Priority.Should().Be(TaskPriority.High);
+        await _repository.Received(1).AddAsync(
+            Arg.Is<TaskItem>(t => t.Priority == TaskPriority.High),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Create_without_priority_defaults_to_medium()
+    {
+        var result = await _sut.CreateAsync(_userId, new CreateTaskRequest("Title", null, null, null));
+
+        result.Priority.Should().Be(TaskPriority.Medium);
+    }
     // ---------- Update ----------
 
     [Fact]
@@ -128,6 +148,20 @@ public class TaskServiceTests
         await _repository.Received(1).UpdateAsync(
             Arg.Is<TaskItem>(t => t.Id == task.Id && t.Title == "Renamed"),
             Arg.Any<CancellationToken>());
+    }
+        
+    [Fact]
+    public async Task Update_changes_the_priority()
+    {
+        var task = ExistingTask();
+        Stored(task);
+
+        var result = await _sut.UpdateAsync(
+            _userId,
+            task.Id,
+            new UpdateTaskRequest("Title", null, TaskItemStatus.Todo, null, TaskPriority.High));
+
+        result.Priority.Should().Be(TaskPriority.High);
     }
 
     [Fact]
