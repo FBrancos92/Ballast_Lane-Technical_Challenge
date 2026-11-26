@@ -21,7 +21,7 @@
 5. A due date cannot be set in the past. If an existing due date has already passed, I can still edit the task without changing that date.
 6. I can **see** my tasks on a board with one column per status (*To do*, *In progress*, *Done*), each showing how many tasks it holds. Within a column, the soonest due date comes first and undated tasks come last.
 7. I can **edit** any field of my task.
-8. I can mark a task done (or not done) with one click.
+8. I can mark a task done by dragging it to the *Done* column, and reopen it by dragging it back. Checkboxes only appear on cards after I press **Select**, to pick tasks for a bulk status change.
 9. I can **delete** a task after confirming.
 10. Open tasks past their due date are highlighted as **overdue**.
 11. I only ever see and change **my own** tasks. Another user's task behaves as if it doesn't exist.
@@ -43,7 +43,8 @@
 | 3 | `sessionStore`, `AuthProvider` | `http.test.ts` |
 | 4, 5, 7 | `TaskItem.Create/Update` | `TaskItemTests`, `TaskServiceTests`, `TaskForm.test.tsx` |
 | 6 | `SqliteTaskRepository.ListByUserAsync`, `TaskBoard` | `SqliteTaskRepositoryTests`, `TaskEndpointsTests`, `TaskBoard.test.tsx` |
-| 8, 9, 10 | `TaskCard`, `TasksPage` | `TaskCard.test.tsx` |
+| 8 | `TaskBoard`, `TaskCard` (checkbox only in selection mode) | `TaskBoard.test.tsx`, `TaskCard.test.tsx` |
+| 9, 10 | `TaskCard`, `TasksPage` | `TaskCard.test.tsx` |
 | 11 | `TaskService.GetOwnedAsync`, JWT `sub` claim | `TaskServiceTests`, `TaskEndpointsTests.Users_cannot_see_or_change_each_others_tasks` |
 | 12 | `TaskItem.Create/Update`, `TaskService`, `SqliteTaskRepository`, `DatabaseInitializer` (migration), `TaskForm`, `TaskCard`, `TasksPage` | `TaskItemTests`, `TaskServiceTests`, `SqliteTaskRepositoryTests`, `TaskEndpointsTests`, `TaskForm.test.tsx`, `TaskCard.test.tsx` |
 | 13 | `TaskItem.ChangeStatus`, `TaskService.UpdateStatusAsync`, `SqliteTaskRepository.UpdateManyAsync` (transaction), `PATCH /api/tasks/status`, `BulkStatusBar`, `TaskCard`, `TasksPage` | `TaskItemTests`, `TaskServiceTests`, `SqliteTaskRepositoryTests`, `TasksControllerTests`, `TaskEndpointsTests`, `BulkStatusBar.test.tsx`, `TaskCard.test.tsx` |
