@@ -171,4 +171,51 @@ public sealed class SqliteTaskRepositoryTests : IAsyncLifetime
 
         (await _db.CountAsync("Tasks")).Should().Be(1);
     }
+
+    [Fact]
+    public async Task Priority_is_saved_and_loaded()
+    {
+        var task = TaskItem.Create(_owner.Id, "Urgent", null, TaskItemStatus.Todo, null, Now, TaskPriority.High);
+
+        await _sut.AddAsync(task);
+        var loaded = await _sut.GetByIdAsync(task.Id);
+
+        loaded!.Priority.Should().Be(TaskPriority.High);
+    }
+
+    [Fact]
+    public async Task Update_saves_a_changed_priority()
+    {
+        var task = TaskItem.Create(_owner.Id, "Task", null, TaskItemStatus.Todo, null, Now, TaskPriority.Low);
+        await _sut.AddAsync(task);
+        task.Update("Task", null, TaskItemStatus.Todo, null, Now, TaskPriority.High);
+
+        await _sut.UpdateAsync(task);
+        var loaded = await _sut.GetByIdAsync(task.Id);
+
+        loaded!.Priority.Should().Be(TaskPriority.High);
+    }
+
+    [Fact]
+    public async Task Initializer_adds_the_priority_column_to_an_older_database()
+    {
+        // Rebuild the Tasks table the way it looked before priorities existed, with one task in it.
+        await _db.ScalarAsync("DROP TABLE Tasks;");
+        await _db.ScalarAsync("""
+            CREATE TABLE Tasks (
+                Id TEXT NOT NULL PRIMARY KEY, UserId TEXT NOT NULL, Title TEXT NOT NULL, Description TEXT NULL,
+                Status TEXT NOT NULL, DueDate TEXT NULL, CreatedAt TEXT NOT NULL, UpdatedAt TEXT NOT NULL);
+            """);
+        var id = Guid.NewGuid();
+        await _db.ScalarAsync($"""
+            INSERT INTO Tasks VALUES ('{id}', '{_owner.Id}', 'Old task', NULL, 'Todo', NULL,
+                '2026-06-15T12:00:00.0000000+00:00', '2026-06-15T12:00:00.0000000+00:00');
+            """);
+
+        await new DatabaseInitializer(_db.ConnectionFactory).InitializeAsync();
+
+        (await _db.ScalarAsync("SELECT COUNT(*) FROM pragma_table_info('Tasks') WHERE name = 'Priority';"))
+            .Should().Be("1");
+        (await _sut.GetByIdAsync(id))!.Priority.Should().Be(TaskPriority.Medium);
+    }
 }
