@@ -16,7 +16,7 @@ const task: Task = {
 }
 
 function renderCard(overrides: Partial<Task> = {}) {
-  const handlers = { onToggleDone: vi.fn(), onEdit: vi.fn(), onDelete: vi.fn() }
+  const handlers = { onEdit: vi.fn(), onDelete: vi.fn() }
   render(
     <div>
       <TaskCard task={{ ...task, ...overrides }} busy={false} {...handlers} />
@@ -46,12 +46,10 @@ describe('TaskCard', () => {
     expect(screen.queryByText(/Overdue/)).not.toBeInTheDocument()
   })
 
-  it('toggles done with the checkbox', async () => {
-    const { onToggleDone, user } = renderCard()
+  it('has no checkbox outside selection mode', () => {
+    renderCard()
 
-    await user.click(screen.getByRole('checkbox', { name: 'Mark "Write README" as done' }))
-
-    expect(onToggleDone).toHaveBeenCalledWith(expect.objectContaining({ id: '1' }))
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
   })
 
   it('asks for confirmation before deleting', async () => {
@@ -102,7 +100,6 @@ describe('TaskCard', () => {
           <TaskCard
             task={task}
             busy={false}
-            onToggleDone={vi.fn()}
             onEdit={vi.fn()}
             onDelete={vi.fn()}
             selection={{ selected, onChange: onSelectChange }}

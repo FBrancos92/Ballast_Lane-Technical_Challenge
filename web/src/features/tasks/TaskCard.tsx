@@ -5,37 +5,29 @@ import { formatDueDate, isOverdue } from './dates'
 interface TaskCardProps {
   task: Task
   busy: boolean
-  onToggleDone: (task: Task) => void
   onEdit: (task: Task) => void
   onDelete: (task: Task) => void
   /** When set, the card is in selection mode: a select checkbox replaces done, edit and delete. */
   selection?: { selected: boolean; onChange: (task: Task, selected: boolean) => void }
 }
 
-export function TaskCard({ task, busy, onToggleDone, onEdit, onDelete, selection }: TaskCardProps) {
+export function TaskCard({ task, busy, onEdit, onDelete, selection }: TaskCardProps) {
   const [confirming, setConfirming] = useState(false)
   const done = task.status === TaskStatus.Done
   const overdue = !done && isOverdue(task.dueDate)
-  const classes = ['task-card', done && 'is-done', selection?.selected && 'is-selected'].filter(Boolean).join(' ')
+  const classes = ['task-card', done && 'is-done', selection && 'is-selectable', selection?.selected && 'is-selected']
+    .filter(Boolean)
+    .join(' ')
 
   return (
     <article className={classes}>
-      {selection ? (
-        <input
-          type="checkbox"
-          className="task-check select-check"
-          checked={selection.selected}
-          onChange={(e) => selection.onChange(task, e.target.checked)}
-          aria-label={`Select "${task.title}"`}
-        />
-      ) : (
+      {selection && (
         <input
           type="checkbox"
           className="task-check"
-          checked={done}
-          disabled={busy}
-          onChange={() => onToggleDone(task)}
-          aria-label={done ? `Mark "${task.title}" as not done` : `Mark "${task.title}" as done`}
+          checked={selection.selected}
+          onChange={(e) => selection.onChange(task, e.target.checked)}
+          aria-label={`Select "${task.title}"`}
         />
       )}
 
