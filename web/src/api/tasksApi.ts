@@ -12,5 +12,9 @@ export const tasksApi = {
   update: (id: string, input: TaskInput) =>
     request<Task>(`/tasks/${encodeURIComponent(id)}`, { method: 'PUT', body: input }),
 
+  /** All or nothing: the API changes every task or none (404 if any id isn't the caller's). */
+  updateStatus: (ids: string[], status: TaskStatus) =>
+    request<Task[]>('/tasks/status', { method: 'PATCH', body: { ids, status } }),
+
   remove: (id: string) => request<void>(`/tasks/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 }

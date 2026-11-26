@@ -4,7 +4,7 @@ A full-stack task manager built for the Ballast Lane .NET technical exercise.
 
 - **Backend:** ASP.NET Core Web API (.NET 11), Clean Architecture, JWT authentication, SQLite through hand-written ADO.NET (**no Entity Framework, Dapper or MediatR**).
 - **Frontend:** React 19 + TypeScript + Vite, React Query for server state, React Router.
-- **Tests:** 135 backend tests (xUnit, NSubstitute, FluentAssertions, in-memory API host) and 36 frontend tests (Vitest, Testing Library).
+- **Tests:** 157 backend tests (xUnit, NSubstitute, FluentAssertions, in-memory API host) and 47 frontend tests (Vitest, Testing Library).
 - **Features:** register and log in; create, read, update and delete tasks with a title, description, status, **priority** and due date; filter by status; overdue highlighting.
 
 Related docs:
@@ -175,9 +175,12 @@ Because `CREATE TABLE IF NOT EXISTS` never changes a table that already exists, 
 | `GET` | `/api/tasks/{id}` | JWT | 200 | 401, 404 |
 | `POST` | `/api/tasks` | JWT | 201 + `Location` | 400, 401 |
 | `PUT` | `/api/tasks/{id}` | JWT | 200 | 400, 401, 404 |
+| `PATCH` | `/api/tasks/status` | JWT | 200 + changed tasks | 400, 401, 404 |
 | `DELETE` | `/api/tasks/{id}` | JWT | 204 | 401, 404 |
 
 The user id always comes from the token's `sub` claim, never from the URL or the body.
+
+`PATCH /api/tasks/status` sets one status on several tasks at once, with a body like `{ "ids": ["…", "…"], "status": "Done" }` (1 to 100 ids). It is all or nothing: if any id is unknown or belongs to another user, the response is 404 and no task changes. The changes are saved in one database transaction, so a task deleted halfway through also rolls the whole request back.
 
 Task request and response bodies use these fields. Enums are sent as text.
 
@@ -199,7 +202,7 @@ Task request and response bodies use these fields. Enums are sent as text.
 web/src/
   api/             fetch wrapper (token, Problem Details -> ApiError), typed endpoint clients
   auth/            AuthProvider (session + auto-logout on expiry/401), RequireAuth route guard
-  features/tasks/  React Query hooks, TaskForm, TaskCard, StatusFilter
+  features/tasks/  React Query hooks, TaskForm, TaskCard, StatusFilter, BulkStatusBar
   components/      Layout, Modal, FormField (accessible label/error wiring)
   pages/           LoginPage, RegisterPage, TasksPage
 ```
@@ -217,10 +220,10 @@ Tests are organized around business rules: each acceptance criterion and edge ca
 
 | Project | What it covers | How |
 | --- | --- | --- |
-| `TaskManager.Application.Tests` (68) | Domain entities and both services | Pure unit tests. Repositories, hasher and token service are NSubstitute mocks, and the clock is a fixed `TimeProvider`. |
-| `TaskManager.Infrastructure.Tests` (41) | Repositories, schema and migration, seeder, PBKDF2, JWT | Against a **real SQLite file** per test, because mocking the database wouldn't prove the SQL works. Includes an SQL-injection test, a foreign-key test and a test that upgrades a pre-priority database. |
-| `TaskManager.Api.Tests` (26) | Controllers in isolation, plus the full HTTP pipeline | Controller unit tests with a mocked service, and `WebApplicationFactory` integration tests: register -> login -> CRUD, 401s, validation and user isolation. |
-| `web` (36) | HTTP client, auth storage, form validation, task card, login page | Vitest + Testing Library, querying the way a user would (by role and label). |
+| `TaskManager.Application.Tests` (81) | Domain entities and both services | Pure unit tests. Repositories, hasher and token service are NSubstitute mocks, and the clock is a fixed `TimeProvider`. |
+| `TaskManager.Infrastructure.Tests` (45) | Repositories, schema and migration, seeder, PBKDF2, JWT | Against a **real SQLite file** per test, because mocking the database wouldn't prove the SQL works. Includes an SQL-injection test, a foreign-key test, a transaction rollback test and a test that upgrades a pre-priority database. |
+| `TaskManager.Api.Tests` (31) | Controllers in isolation, plus the full HTTP pipeline | Controller unit tests with a mocked service, and `WebApplicationFactory` integration tests: register -> login -> CRUD, bulk status change, 401s, validation and user isolation. |
+| `web` (47) | HTTP client, auth storage, form validation, task card, bulk status bar, login page | Vitest + Testing Library, querying the way a user would (by role and label). |
 
 ### Task priority: built test-first
 

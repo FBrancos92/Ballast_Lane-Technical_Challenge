@@ -29,6 +29,14 @@ export function useUpdateTask() {
   })
 }
 
+export function useUpdateTasksStatus() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ ids, status }: { ids: string[]; status: TaskStatus }) => tasksApi.updateStatus(ids, status),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: tasksKey }),
+  })
+}
+
 export function useDeleteTask() {
   const queryClient = useQueryClient()
   return useMutation({

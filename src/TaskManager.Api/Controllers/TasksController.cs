@@ -48,6 +48,19 @@ public sealed class TasksController(ITaskService taskService) : ControllerBase
         CancellationToken cancellationToken) =>
         Ok(await taskService.UpdateAsync(User.GetUserId(), id, request, cancellationToken));
 
+    /// <summary>
+    /// Sets one status on several tasks at once. All or nothing: if any id is unknown or
+    /// belongs to someone else, the response is 404 and no task changes.
+    /// </summary>
+    [HttpPatch("status")]
+    [ProducesResponseType<IReadOnlyList<TaskDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<IReadOnlyList<TaskDto>>> UpdateStatus(
+        [FromBody] UpdateTasksStatusRequest request,
+        CancellationToken cancellationToken) =>
+        Ok(await taskService.UpdateStatusAsync(User.GetUserId(), request, cancellationToken));
+
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]

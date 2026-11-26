@@ -76,6 +76,18 @@ public class TasksControllerTests
     }
 
     [Fact]
+    public async Task UpdateStatus_returns_200_with_the_changed_tasks()
+    {
+        IReadOnlyList<TaskDto> changed = [SampleDto(), SampleDto()];
+        var request = new UpdateTasksStatusRequest([changed[0].Id, changed[1].Id], TaskItemStatus.Done);
+        _service.UpdateStatusAsync(_userId, request, Arg.Any<CancellationToken>()).Returns(changed);
+
+        var result = await _sut.UpdateStatus(request, CancellationToken.None);
+
+        result.Result.Should().BeOfType<OkObjectResult>().Which.Value.Should().BeSameAs(changed);
+    }
+
+    [Fact]
     public async Task Delete_returns_204_after_deleting_as_the_caller()
     {
         var id = Guid.NewGuid();

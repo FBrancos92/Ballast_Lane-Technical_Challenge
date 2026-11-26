@@ -17,6 +17,11 @@ public sealed record UpdateTaskRequest(
     DateOnly? DueDate,
     TaskPriority? Priority = null);
 
+/// <summary>Sets the same status on several of the caller's tasks at once.</summary>
+public sealed record UpdateTasksStatusRequest(
+    IReadOnlyList<Guid>? Ids,
+    TaskItemStatus Status);
+
 public sealed record TaskDto(
     Guid Id,
     string Title,
@@ -47,6 +52,9 @@ public interface ITaskService
     Task<TaskDto> CreateAsync(Guid userId, CreateTaskRequest request, CancellationToken cancellationToken = default);
 
     Task<TaskDto> UpdateAsync(Guid userId, Guid taskId, UpdateTaskRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>All or nothing: if any task is missing or not the caller's, none is changed.</summary>
+    Task<IReadOnlyList<TaskDto>> UpdateStatusAsync(Guid userId, UpdateTasksStatusRequest request, CancellationToken cancellationToken = default);
 
     Task DeleteAsync(Guid userId, Guid taskId, CancellationToken cancellationToken = default);
 }

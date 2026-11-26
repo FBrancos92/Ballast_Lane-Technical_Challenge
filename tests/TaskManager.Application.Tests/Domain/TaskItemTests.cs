@@ -206,4 +206,47 @@ public class TaskItemTests
         act.Should().Throw<DomainValidationException>().Which.Errors.Should().ContainKey("Priority");
         task.Priority.Should().Be(TaskPriority.Low);
     }
+
+    // ---------- ChangeStatus ----------
+
+    [Fact]
+    public void ChangeStatus_sets_the_status_and_touches_only_UpdatedAt()
+    {
+        var task = TaskItem.Create(UserId, "Title", "Notes", TaskItemStatus.Todo, Today.AddDays(2), Now, TaskPriority.High);
+        var later = Now.AddHours(1);
+
+        task.ChangeStatus(TaskItemStatus.Done, later);
+
+        task.Status.Should().Be(TaskItemStatus.Done);
+        task.UpdatedAt.Should().Be(later);
+        task.Title.Should().Be("Title");
+        task.Description.Should().Be("Notes");
+        task.Priority.Should().Be(TaskPriority.High);
+        task.DueDate.Should().Be(Today.AddDays(2));
+        task.CreatedAt.Should().Be(Now);
+    }
+
+    [Fact]
+    public void ChangeStatus_works_on_an_overdue_task()
+    {
+        var overdue = TaskItem.Rehydrate(
+            Guid.NewGuid(), UserId, "Late", null, TaskItemStatus.Todo, TaskPriority.Medium, Today.AddDays(-5), Now, Now);
+
+        overdue.ChangeStatus(TaskItemStatus.Done, Now);
+
+        overdue.Status.Should().Be(TaskItemStatus.Done);
+        overdue.DueDate.Should().Be(Today.AddDays(-5));
+    }
+
+    [Fact]
+    public void ChangeStatus_with_undefined_status_fails_and_leaves_the_task_unchanged()
+    {
+        var task = TaskItem.Create(UserId, "Title", null, TaskItemStatus.Todo, null, Now);
+
+        var act = () => task.ChangeStatus((TaskItemStatus)42, Now.AddHours(1));
+
+        act.Should().Throw<DomainValidationException>().Which.Errors.Should().ContainKey("Status");
+        task.Status.Should().Be(TaskItemStatus.Todo);
+        task.UpdatedAt.Should().Be(Now);
+    }
 }
