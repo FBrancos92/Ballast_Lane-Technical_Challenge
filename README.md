@@ -4,7 +4,8 @@ A full-stack task manager built for the Ballast Lane .NET technical exercise.
 
 - **Backend:** ASP.NET Core Web API (.NET 11), Clean Architecture, JWT authentication, SQLite through hand-written ADO.NET (**no Entity Framework, Dapper or MediatR**).
 - **Frontend:** React 19 + TypeScript + Vite, React Query for server state, React Router.
-- **Tests:** 120 backend tests (xUnit, NSubstitute, FluentAssertions, in-memory API host) and 33 frontend tests (Vitest, Testing Library).
+- **Tests:** 135 backend tests (xUnit, NSubstitute, FluentAssertions, in-memory API host) and 36 frontend tests (Vitest, Testing Library).
+- **Features:** register and log in; create, read, update and delete tasks with a title, description, status, **priority** and due date; filter by status; overdue highlighting.
 
 Related docs:
 
@@ -100,7 +101,7 @@ flowchart TB
 
 | Layer | Where the rules live |
 | --- | --- |
-| Domain | Field invariants: title required (max 200), description (max 2000), valid status, a due date can't be set in the past, usernames and emails well-formed. Enforced in `TaskItem.Create/Update` and `User.Create`, so an invalid entity can't exist. |
+| Domain | Field invariants: title required (max 200), description (max 2000), valid status and priority (priority defaults to Medium), a due date can't be set in the past, usernames and emails well-formed. Enforced in `TaskItem.Create/Update` and `User.Create`, so an invalid entity can't exist. |
 | Application | Use-case rules: every operation is scoped to the caller, another user's task is reported as **404, not 403** (so task ids can't be probed), unique usernames and emails, password policy, login that doesn't reveal which usernames exist. |
 | Infrastructure | Parameterized SQL only, explicit type mapping (Guids and dates stored as readable TEXT), a UNIQUE index as the final guard against duplicate registrations, a foreign key with cascade delete. |
 | API | HTTP concerns only: routing, status codes, auth attributes, and turning exceptions into [RFC 9457 Problem Details](https://www.rfc-editor.org/rfc/rfc9457). Controllers contain no try/catch and no business logic. |
@@ -110,10 +111,13 @@ flowchart TB
 ```sql
 Users (Id TEXT PK, Username TEXT UNIQUE COLLATE NOCASE, Email TEXT UNIQUE, PasswordHash TEXT, CreatedAt TEXT)
 Tasks (Id TEXT PK, UserId TEXT FK -> Users ON DELETE CASCADE, Title TEXT, Description TEXT NULL,
-       Status TEXT CHECK (Todo|InProgress|Done), DueDate TEXT NULL, CreatedAt TEXT, UpdatedAt TEXT)
+       Status TEXT CHECK (Todo|InProgress|Done), Priority TEXT DEFAULT 'Medium' CHECK (Low|Medium|High),
+       DueDate TEXT NULL, CreatedAt TEXT, UpdatedAt TEXT)
 ```
 
 The schema lives in [DatabaseInitializer.cs](src/TaskManager.Infrastructure/Persistence/DatabaseInitializer.cs). The script is idempotent and runs on every start, which takes the place of ORM migrations.
+
+Because `CREATE TABLE IF NOT EXISTS` never changes a table that already exists, columns added later need a migration step. `Priority` was added after the first release, so `AddPriorityColumnIfMissingAsync` checks `pragma_table_info('Tasks')` and runs `ALTER TABLE ... ADD COLUMN` only when the column is missing. Existing tasks get `Medium`, and no data is lost.
 
 ### API
 
@@ -130,6 +134,20 @@ The schema lives in [DatabaseInitializer.cs](src/TaskManager.Infrastructure/Pers
 | `DELETE` | `/api/tasks/{id}` | JWT | 204 | 401, 404 |
 
 The user id always comes from the token's `sub` claim, never from the URL or the body.
+
+Task request and response bodies use these fields. Enums are sent as text.
+
+```json
+{
+  "title": "Prepare interview presentation",
+  "description": "User story, architecture diagram, live demo.",
+  "status": "InProgress",
+  "priority": "High",
+  "dueDate": "2026-11-27"
+}
+```
+
+`status` (`Todo`, `InProgress` or `Done`) and `priority` (`Low`, `Medium` or `High`) are optional on create and default to `Todo` and `Medium`. On update, leaving out `priority` keeps the current value. Responses also include `id`, `createdAt` and `updatedAt`.
 
 ### Frontend structure
 
@@ -155,10 +173,14 @@ Tests are organized around business rules: each acceptance criterion and edge ca
 
 | Project | What it covers | How |
 | --- | --- | --- |
-| `TaskManager.Application.Tests` (59) | Domain entities and both services | Pure unit tests. Repositories, hasher and token service are NSubstitute mocks, and the clock is a fixed `TimeProvider`. |
-| `TaskManager.Infrastructure.Tests` (38) | Repositories, schema, seeder, PBKDF2, JWT | Against a **real SQLite file** per test, because mocking the database wouldn't prove the SQL works. Includes an SQL-injection test and a foreign-key test. |
-| `TaskManager.Api.Tests` (23) | Controllers in isolation, plus the full HTTP pipeline | Controller unit tests with a mocked service, and `WebApplicationFactory` integration tests: register -> login -> CRUD, 401s, validation and user isolation. |
-| `web` (33) | HTTP client, auth storage, form validation, task card, login page | Vitest + Testing Library, querying the way a user would (by role and label). |
+| `TaskManager.Application.Tests` (68) | Domain entities and both services | Pure unit tests. Repositories, hasher and token service are NSubstitute mocks, and the clock is a fixed `TimeProvider`. |
+| `TaskManager.Infrastructure.Tests` (41) | Repositories, schema and migration, seeder, PBKDF2, JWT | Against a **real SQLite file** per test, because mocking the database wouldn't prove the SQL works. Includes an SQL-injection test, a foreign-key test and a test that upgrades a pre-priority database. |
+| `TaskManager.Api.Tests` (26) | Controllers in isolation, plus the full HTTP pipeline | Controller unit tests with a mocked service, and `WebApplicationFactory` integration tests: register -> login -> CRUD, 401s, validation and user isolation. |
+| `web` (36) | HTTP client, auth storage, form validation, task card, login page | Vitest + Testing Library, querying the way a user would (by role and label). |
+
+### Task priority: built test-first
+
+The priority feature was added after the first version, strictly red → green, one layer at a time: domain → application → infrastructure (including the migration) → API → React. Each layer has a commit with a failing test, followed by the commit that makes it pass. The API test was the exception: it passed on the first run, because the controllers needed no changes. See the commits in [PR #1](https://github.com/NotedBread/Ballast_Lane-Technical_Challenge/pull/1).
 
 ---
 
