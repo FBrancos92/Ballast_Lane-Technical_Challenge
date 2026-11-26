@@ -9,6 +9,7 @@ const task: Task = {
   title: 'Write README',
   description: 'Setup steps',
   status: 'Todo',
+  priority: 'High',
   dueDate: '2000-01-01',
   createdAt: '',
   updatedAt: '',
@@ -79,5 +80,11 @@ describe('TaskCard', () => {
     await user.click(screen.getByRole('button', { name: 'Edit Write README' }))
 
     expect(onEdit).toHaveBeenCalled()
+  })
+
+  it('shows the priority', () => {
+    renderCard()
+
+    expect(screen.getByText('High priority')).toBeInTheDocument()
   })
 })
