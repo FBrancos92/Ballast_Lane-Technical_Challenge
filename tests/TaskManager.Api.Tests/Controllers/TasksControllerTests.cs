@@ -24,7 +24,7 @@ public class TasksControllerTests
     }
 
     private static TaskDto SampleDto(Guid? id = null) => new(
-        id ?? Guid.NewGuid(), "Title", null, TaskItemStatus.Todo, null, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow);
+        id ?? Guid.NewGuid(), "Title", null, TaskItemStatus.Todo, null, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, TaskPriority.Medium);
 
     [Fact]
     public async Task List_passes_the_callers_id_and_filter_and_returns_200()

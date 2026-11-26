@@ -6,14 +6,16 @@ public sealed record CreateTaskRequest(
     string? Title,
     string? Description,
     TaskItemStatus? Status,
-    DateOnly? DueDate);
+    DateOnly? DueDate,
+    TaskPriority? Priority = null);
 
 /// <summary>PUT semantics: the whole editable state is replaced.</summary>
 public sealed record UpdateTaskRequest(
     string? Title,
     string? Description,
     TaskItemStatus Status,
-    DateOnly? DueDate);
+    DateOnly? DueDate,
+    TaskPriority? Priority = null);
 
 public sealed record TaskDto(
     Guid Id,
@@ -22,7 +24,8 @@ public sealed record TaskDto(
     TaskItemStatus Status,
     DateOnly? DueDate,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt)
+    DateTimeOffset UpdatedAt,
+    TaskPriority Priority)
 {
     public static TaskDto FromEntity(TaskItem task) => new(
         task.Id,
@@ -31,7 +34,8 @@ public sealed record TaskDto(
         task.Status,
         task.DueDate,
         task.CreatedAt,
-        task.UpdatedAt);
+        task.UpdatedAt,
+        task.Priority);
 }
 
 public interface ITaskService
