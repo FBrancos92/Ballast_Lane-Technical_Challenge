@@ -180,6 +180,75 @@ public class TaskEndpointsTests(ApiFactory factory) : IClassFixture<ApiFactory>
         json.Should().Contain("\"priority\":\"High\"");
     }
 
+    // ---------- Bulk status change ----------
+
+    [Fact]
+    public async Task Bulk_status_change_requires_authentication()
+    {
+        var response = await factory.CreateClient().PatchAsJsonAsync(
+            "/api/tasks/status",
+            new UpdateTasksStatusRequest([Guid.NewGuid()], TaskItemStatus.Done),
+            ApiFactory.Json);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Bulk_status_change_updates_every_selected_task()
+    {
+        var client = await DemoClientAsync();
+        var first = await CreateAsync(client, "Bulk one");
+        var second = await CreateAsync(client, "Bulk two");
+
+        var response = await client.PatchAsJsonAsync(
+            "/api/tasks/status",
+            new UpdateTasksStatusRequest([first.Id, second.Id], TaskItemStatus.Done),
+            ApiFactory.Json);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var changed = await response.Content.ReadFromJsonAsync<List<TaskDto>>(ApiFactory.Json);
+        changed.Should().HaveCount(2).And.OnlyContain(t => t.Status == TaskItemStatus.Done);
+
+        var reloaded = await client.GetFromJsonAsync<TaskDto>($"/api/tasks/{second.Id}", ApiFactory.Json);
+        reloaded!.Status.Should().Be(TaskItemStatus.Done);
+        reloaded.Title.Should().Be("Bulk two");
+    }
+
+    [Fact]
+    public async Task Bulk_status_change_including_another_users_task_returns_404_and_changes_nothing()
+    {
+        var demo = await DemoClientAsync();
+        var alex = await AlexClientAsync();
+        var alexTask = await CreateAsync(alex, "Alex's own");
+        var demoTask = await CreateAsync(demo, "Demo's secret");
+
+        var response = await alex.PatchAsJsonAsync(
+            "/api/tasks/status",
+            new UpdateTasksStatusRequest([alexTask.Id, demoTask.Id], TaskItemStatus.Done),
+            ApiFactory.Json);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await alex.GetFromJsonAsync<TaskDto>($"/api/tasks/{alexTask.Id}", ApiFactory.Json))!
+            .Status.Should().Be(TaskItemStatus.Todo);
+        (await demo.GetFromJsonAsync<TaskDto>($"/api/tasks/{demoTask.Id}", ApiFactory.Json))!
+            .Status.Should().Be(TaskItemStatus.Todo);
+    }
+
+    [Fact]
+    public async Task Bulk_status_change_without_ids_returns_400()
+    {
+        var client = await DemoClientAsync();
+
+        var response = await client.PatchAsJsonAsync(
+            "/api/tasks/status",
+            new UpdateTasksStatusRequest([], TaskItemStatus.Done),
+            ApiFactory.Json);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(ApiFactory.Json);
+        problem!.Errors.Keys.Should().BeEquivalentTo("ids");
+    }
+
     [Fact]
     public async Task Unknown_priority_value_returns_400()
     {
