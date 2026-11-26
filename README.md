@@ -29,7 +29,7 @@ Nothing else is needed. The database is a SQLite file that is created and seeded
 ### 0. Get the code
 
 ```powershell
-git clone https://github.com/NotedBread/Ballast_Lane-Technical_Challenge.git
+git clone https://github.com/FBrancos92/Ballast_Lane-Technical_Challenge.git
 cd Ballast_Lane-Technical_Challenge
 ```
 
@@ -224,7 +224,7 @@ Tests are organized around business rules: each acceptance criterion and edge ca
 
 ### Task priority: built test-first
 
-The priority feature was added after the first version, strictly red → green, one layer at a time: domain → application → infrastructure (including the migration) → API → React. Each layer has a commit with a failing test, followed by the commit that makes it pass. The API test was the exception: it passed on the first run, because the controllers needed no changes. See the commits in [PR #1](https://github.com/NotedBread/Ballast_Lane-Technical_Challenge/pull/1).
+The priority feature was added after the first version, strictly red → green, one layer at a time: domain → application → infrastructure (including the migration) → API → React. Each layer has a commit with a failing test, followed by the commit that makes it pass. The API test was the exception: it passed on the first run, because the controllers needed no changes. See the commits in [PR #1](https://github.com/FBrancos92/Ballast_Lane-Technical_Challenge/pull/1).
 
 ---
 
