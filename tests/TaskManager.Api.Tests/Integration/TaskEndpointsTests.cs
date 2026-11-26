@@ -143,4 +143,51 @@ public class TaskEndpointsTests(ApiFactory factory) : IClassFixture<ApiFactory>
 
         (await client.GetAsync("/api/tasks/not-a-guid")).StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
+
+    [Fact]
+    public async Task Priority_round_trips_through_the_api()
+    {
+        var client = await DemoClientAsync();
+
+        var create = await client.PostAsJsonAsync(
+            "/api/tasks",
+            new CreateTaskRequest("Urgent fix", null, null, null, TaskPriority.High),
+            ApiFactory.Json);
+        var created = (await create.Content.ReadFromJsonAsync<TaskDto>(ApiFactory.Json))!;
+        created.Priority.Should().Be(TaskPriority.High);
+
+        var update = await client.PutAsJsonAsync(
+            $"/api/tasks/{created.Id}",
+            new UpdateTaskRequest("Urgent fix", null, TaskItemStatus.InProgress, null, TaskPriority.Low),
+            ApiFactory.Json);
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var reloaded = await client.GetFromJsonAsync<TaskDto>($"/api/tasks/{created.Id}", ApiFactory.Json);
+        reloaded!.Priority.Should().Be(TaskPriority.Low);
+    }
+
+    [Fact]
+    public async Task Priority_is_sent_as_text_in_json()
+    {
+        var client = await DemoClientAsync();
+
+        var response = await client.PostAsJsonAsync(
+            "/api/tasks",
+            new CreateTaskRequest("Wire format", null, null, null, TaskPriority.High),
+            ApiFactory.Json);
+        var json = await response.Content.ReadAsStringAsync();
+
+        json.Should().Contain("\"priority\":\"High\"");
+    }
+
+    [Fact]
+    public async Task Unknown_priority_value_returns_400()
+    {
+        var client = await DemoClientAsync();
+        using var body = new StringContent("""{ "title": "x", "priority": "Urgent" }""", Encoding.UTF8, "application/json");
+
+        var response = await client.PostAsync("/api/tasks", body);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
 }

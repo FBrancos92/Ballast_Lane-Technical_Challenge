@@ -17,6 +17,7 @@ public sealed class TaskItem
         string title,
         string? description,
         TaskItemStatus status,
+        TaskPriority priority,
         DateOnly? dueDate,
         DateTimeOffset createdAt,
         DateTimeOffset updatedAt)
@@ -26,6 +27,7 @@ public sealed class TaskItem
         Title = title;
         Description = description;
         Status = status;
+        Priority = priority;
         DueDate = dueDate;
         CreatedAt = createdAt;
         UpdatedAt = updatedAt;
@@ -36,6 +38,7 @@ public sealed class TaskItem
     public string Title { get; private set; }
     public string? Description { get; private set; }
     public TaskItemStatus Status { get; private set; }
+    public TaskPriority Priority { get; private set; }
     public DateOnly? DueDate { get; private set; }
     public DateTimeOffset CreatedAt { get; }
     public DateTimeOffset UpdatedAt { get; private set; }
@@ -46,7 +49,8 @@ public sealed class TaskItem
         string? description,
         TaskItemStatus status,
         DateOnly? dueDate,
-        DateTimeOffset now)
+        DateTimeOffset now,
+        TaskPriority priority = TaskPriority.Medium)
     {
         var errors = new ValidationErrors();
         if (userId == Guid.Empty)
@@ -55,13 +59,19 @@ public sealed class TaskItem
         }
 
         var (cleanTitle, cleanDescription) = ValidateFields(errors, title, description, status);
+
         if (dueDate is { } due && due < DateOnly.FromDateTime(now.UtcDateTime))
         {
             errors.Add(nameof(DueDate), "Due date cannot be in the past.");
         }
 
+        if (!Enum.IsDefined(priority))
+        {
+            errors.Add(nameof(Priority), "Priority is not valid.");
+        }
         errors.ThrowIfAny();
-        return new TaskItem(Guid.NewGuid(), userId, cleanTitle, cleanDescription, status, dueDate, now, now);
+        
+        return new TaskItem(Guid.NewGuid(), userId, cleanTitle, cleanDescription, status, priority, dueDate, now, now);
     }
 
     public void Update(
@@ -69,7 +79,8 @@ public sealed class TaskItem
         string? description,
         TaskItemStatus status,
         DateOnly? dueDate,
-        DateTimeOffset now)
+        DateTimeOffset now,
+        TaskPriority? priority = null)
     {
         var errors = new ValidationErrors();
         var (cleanTitle, cleanDescription) = ValidateFields(errors, title, description, status);
@@ -80,10 +91,18 @@ public sealed class TaskItem
             errors.Add(nameof(DueDate), "Due date cannot be in the past.");
         }
 
+        var newPriority = priority ?? Priority;
+
+        if (!Enum.IsDefined(newPriority))
+        {
+            errors.Add(nameof(Priority), "Priority is not valid.");
+        }
+
         errors.ThrowIfAny();
         Title = cleanTitle;
         Description = cleanDescription;
         Status = status;
+        Priority = newPriority;
         DueDate = dueDate;
         UpdatedAt = now;
     }
@@ -95,10 +114,11 @@ public sealed class TaskItem
         string title,
         string? description,
         TaskItemStatus status,
+        TaskPriority priority,
         DateOnly? dueDate,
         DateTimeOffset createdAt,
         DateTimeOffset updatedAt) =>
-        new(id, userId, title, description, status, dueDate, createdAt, updatedAt);
+        new(id, userId, title, description, status, priority, dueDate, createdAt, updatedAt);
 
     private static (string Title, string? Description) ValidateFields(
         ValidationErrors errors,

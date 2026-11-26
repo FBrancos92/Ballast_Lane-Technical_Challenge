@@ -17,6 +17,7 @@ const existing: Task = {
   title: 'Existing',
   description: 'Old notes',
   status: 'InProgress',
+  priority: 'Low',  
   dueDate: '2020-01-01',
   createdAt: '',
   updatedAt: '',
@@ -29,7 +30,7 @@ describe('TaskForm', () => {
     await user.type(screen.getByLabelText('Title'), '  Buy milk  ')
     await user.click(screen.getByRole('button', { name: 'Create task' }))
 
-    expect(onSubmit).toHaveBeenCalledWith({ title: 'Buy milk', description: null, status: 'Todo', dueDate: null })
+    expect(onSubmit).toHaveBeenCalledWith({ title: 'Buy milk', description: null, status: 'Todo', priority: 'Medium', dueDate: null })
   })
 
   it('requires a title', async () => {
@@ -76,6 +77,7 @@ describe('TaskForm', () => {
       title: 'Existing',
       description: 'Old notes',
       status: 'Done',
+      priority: 'Low',
       dueDate: '2020-01-01',
     })
   })
@@ -99,5 +101,22 @@ describe('TaskForm', () => {
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
 
     expect(onCancel).toHaveBeenCalled()
+  })
+
+  
+  it('lets you choose a priority', async () => {
+    const { onSubmit, user } = renderForm()
+
+    await user.type(screen.getByLabelText('Title'), 'Task')
+    await user.selectOptions(screen.getByLabelText('Priority'), 'High')
+    await user.click(screen.getByRole('button', { name: 'Create task' }))
+
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ priority: 'High' }))
+  })
+
+  it('pre-fills the priority when editing', () => {
+    renderForm({ initial: existing, submitLabel: 'Save changes' })
+
+    expect(screen.getByLabelText('Priority')).toHaveValue('Low')
   })
 })

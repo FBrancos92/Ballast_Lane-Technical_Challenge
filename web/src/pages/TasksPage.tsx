@@ -48,6 +48,7 @@ export function TasksPage() {
           title: task.title,
           description: task.description,
           dueDate: task.dueDate,
+          priority: task.priority,
           status: task.status === TaskStatus.Done ? TaskStatus.Todo : TaskStatus.Done,
         },
       },

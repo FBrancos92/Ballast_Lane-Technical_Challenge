@@ -405,6 +405,19 @@ a {
   color: var(--success);
 }
 
+.priority-High {
+  color: var(--danger);
+}
+
+.priority-Medium {
+  color: var(--warning);
+}
+
+.priority-Low {
+  color: var(--muted);
+  border-style: dashed;
+}
+
 .due {
   color: var(--muted);
 }

@@ -40,7 +40,8 @@ public sealed class TaskService(ITaskRepository tasks, TimeProvider timeProvider
             request.Description,
             request.Status ?? TaskItemStatus.Todo,
             request.DueDate,
-            timeProvider.GetUtcNow());
+            timeProvider.GetUtcNow(),
+            request.Priority ?? TaskPriority.Medium);
 
         await tasks.AddAsync(task, cancellationToken);
         return TaskDto.FromEntity(task);
@@ -55,7 +56,7 @@ public sealed class TaskService(ITaskRepository tasks, TimeProvider timeProvider
         ArgumentNullException.ThrowIfNull(request);
 
         var task = await GetOwnedAsync(userId, taskId, cancellationToken);
-        task.Update(request.Title, request.Description, request.Status, request.DueDate, timeProvider.GetUtcNow());
+        task.Update(request.Title, request.Description, request.Status, request.DueDate, timeProvider.GetUtcNow(), request.Priority);
 
         if (!await tasks.UpdateAsync(task, cancellationToken))
         {
