@@ -19,7 +19,7 @@ export function TaskCard({ task, busy, onToggleDone, onEdit, onDelete, selection
   const classes = ['task-card', done && 'is-done', selection?.selected && 'is-selected'].filter(Boolean).join(' ')
 
   return (
-    <li className={classes}>
+    <article className={classes}>
       {selection ? (
         <input
           type="checkbox"
@@ -88,6 +88,6 @@ export function TaskCard({ task, busy, onToggleDone, onEdit, onDelete, selection
           </>
         )}
       </div>
-    </li>
+    </article>
   )
 }
