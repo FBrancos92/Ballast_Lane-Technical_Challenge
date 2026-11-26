@@ -4,7 +4,7 @@ A full-stack task manager built for the Ballast Lane .NET technical exercise.
 
 - **Backend:** ASP.NET Core Web API (.NET 11), Clean Architecture, JWT authentication, SQLite through hand-written ADO.NET (**no Entity Framework, Dapper or MediatR**).
 - **Frontend:** React 19 + TypeScript + Vite, React Query for server state, React Router.
-- **Tests:** 157 backend tests (xUnit, NSubstitute, FluentAssertions, in-memory API host) and 56 frontend tests (Vitest, Testing Library).
+- **Tests:** 158 backend tests (xUnit, NSubstitute, FluentAssertions, in-memory API host) and 56 frontend tests (Vitest, Testing Library).
 - **Features:** register and log in; create, read, update and delete tasks with a title, description, status, **priority** and due date; a board with one column per status, where dragging a card to another column changes its status; changing the status of several tasks at once; overdue highlighting.
 
 Related docs:
@@ -57,7 +57,7 @@ Open **http://localhost:5173**. The Vite dev server proxies `/api` to the API, s
 
 | Username | Password | Notes |
 | --- | --- | --- |
-| `demo` | `Demo1234!` | Five seeded tasks. The login page has a **Fill in** button. |
+| `demo` | `Demo1234!` | Six seeded tasks across all three columns and all three priorities. The login page has a **Fill in** button. |
 | `alex` | `Alex1234!` | A second user, to show that users never see each other's tasks. |
 
 To reset the demo data, stop the API and delete `src/TaskManager.Api/taskmanager.db`.
@@ -222,7 +222,7 @@ Tests are organized around business rules: each acceptance criterion and edge ca
 | Project | What it covers | How |
 | --- | --- | --- |
 | `TaskManager.Application.Tests` (81) | Domain entities and both services | Pure unit tests. Repositories, hasher and token service are NSubstitute mocks, and the clock is a fixed `TimeProvider`. |
-| `TaskManager.Infrastructure.Tests` (45) | Repositories, schema and migration, seeder, PBKDF2, JWT | Against a **real SQLite file** per test, because mocking the database wouldn't prove the SQL works. Includes an SQL-injection test, a foreign-key test, a transaction rollback test and a test that upgrades a pre-priority database. |
+| `TaskManager.Infrastructure.Tests` (46) | Repositories, schema and migration, seeder, PBKDF2, JWT | Against a **real SQLite file** per test, because mocking the database wouldn't prove the SQL works. Includes an SQL-injection test, a foreign-key test, a transaction rollback test and a test that upgrades a pre-priority database. |
 | `TaskManager.Api.Tests` (31) | Controllers in isolation, plus the full HTTP pipeline | Controller unit tests with a mocked service, and `WebApplicationFactory` integration tests: register -> login -> CRUD, bulk status change, 401s, validation and user isolation. |
 | `web` (56) | HTTP client, auth storage, form validation, task card, board drag and drop, optimistic moves with rollback, bulk status bar, login page | Vitest + Testing Library, querying the way a user would (by role and label). |
 
