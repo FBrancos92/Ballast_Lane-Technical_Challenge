@@ -59,7 +59,7 @@ public sealed class TaskItem
         }
 
         var (cleanTitle, cleanDescription) = ValidateFields(errors, title, description, status);
-        
+
         if (dueDate is { } due && due < DateOnly.FromDateTime(now.UtcDateTime))
         {
             errors.Add(nameof(DueDate), "Due date cannot be in the past.");
@@ -79,7 +79,8 @@ public sealed class TaskItem
         string? description,
         TaskItemStatus status,
         DateOnly? dueDate,
-        DateTimeOffset now)
+        DateTimeOffset now,
+        TaskPriority? priority = null)
     {
         var errors = new ValidationErrors();
         var (cleanTitle, cleanDescription) = ValidateFields(errors, title, description, status);
@@ -90,10 +91,18 @@ public sealed class TaskItem
             errors.Add(nameof(DueDate), "Due date cannot be in the past.");
         }
 
+        var newPriority = priority ?? Priority;
+
+        if (!Enum.IsDefined(newPriority))
+        {
+            errors.Add(nameof(Priority), "Priority is not valid.");
+        }
+
         errors.ThrowIfAny();
         Title = cleanTitle;
         Description = cleanDescription;
         Status = status;
+        Priority = newPriority;
         DueDate = dueDate;
         UpdatedAt = now;
     }
