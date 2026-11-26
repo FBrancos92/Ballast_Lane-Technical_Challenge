@@ -22,8 +22,18 @@ Related docs:
 | --- | --- |
 | .NET SDK | 11.0 or later (`dotnet --version`) |
 | Node.js | 20.19+ or 22.12+ (`node --version`) |
+| Git | any recent version (`git --version`) |
 
 Nothing else is needed. The database is a SQLite file that is created and seeded on first run.
+
+### 0. Get the code
+
+```powershell
+git clone https://github.com/NotedBread/Ballast_Lane-Technical_Challenge.git
+cd Ballast_Lane-Technical_Challenge
+```
+
+Run every command below from this folder (the one with `TaskManager.slnx`) unless it says otherwise. The repository is private: if `git clone` asks for credentials or says *repository not found*, ask the owner for collaborator access.
 
 ### 1. Run the API
 
@@ -63,6 +73,40 @@ cd web; npm test
 ```
 
 Other frontend checks: `npm run typecheck`, `npm run lint`, `npm run build`.
+
+### Troubleshooting
+
+**`npm` fails in PowerShell with `SecurityError` / `UnauthorizedAccess` / "running scripts is disabled on this system"**
+Windows' execution policy is blocking `npm.ps1`. Use the `.cmd` launcher instead, which works the same and needs no settings change: `npm.cmd install`, `npm.cmd run dev`, `npm.cmd test`. Alternatively, run the commands from Command Prompt or Git Bash.
+
+**`npm` says `ENOENT ... package.json`**
+You're in the repository root. The frontend lives in `web/`, so `cd web` first.
+
+**`NETSDK1045: The current .NET SDK does not support targeting .NET 11.0`**
+Install the .NET 11 SDK from https://dotnet.microsoft.com/download, then check with `dotnet --list-sdks`.
+
+**`MSB3027: Could not copy ... The file is locked by: "TaskManager.Api"`**
+Another copy of the API is still running and holds its files open. Stop it (Ctrl+C in its terminal) and run the command again. `dotnet test` hits the same error while the API is running.
+
+**Port 5193 (API) is already in use**
+Start the API on another port, then point the frontend's proxy at it:
+
+```powershell
+dotnet run --project src/TaskManager.Api --launch-profile http --urls http://localhost:5200
+```
+
+```powershell
+cd web; $env:API_URL = "http://localhost:5200"; npm run dev
+```
+
+**Port 5173 (frontend) is already in use**
+`npm run dev -- --port 5174`, then open http://localhost:5174. Requests to `/api` still go through the proxy, so no CORS change is needed.
+
+**The page loads but login fails with "Could not reach the server"**
+The frontend is running but the API isn't. Start it as in step 1 and check http://localhost:5193/api/health returns `Healthy`.
+
+**Demo data looks wrong, or you want a fresh start**
+Stop the API, delete `src/TaskManager.Api/taskmanager.db`, and start it again. The schema and demo data are recreated automatically.
 
 ---
 
