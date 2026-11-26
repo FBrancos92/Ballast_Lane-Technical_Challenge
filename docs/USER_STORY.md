@@ -19,19 +19,20 @@
 
 4. I can **create** a task with a title (required, max 200 characters), an optional description (max 2000), a status (*To do*, *In progress* or *Done*; defaults to *To do*) and an optional due date.
 5. A due date cannot be set in the past. If an existing due date has already passed, I can still edit the task without changing that date.
-6. I can **see** my tasks, soonest due first, with undated tasks last. I can filter by status.
+6. I can **see** my tasks on a board with one column per status (*To do*, *In progress*, *Done*), each showing how many tasks it holds. Within a column, the soonest due date comes first and undated tasks come last.
 7. I can **edit** any field of my task.
-8. I can mark a task done (or not done) with one click.
+8. I can mark a task done by dragging it to the *Done* column, and reopen it by dragging it back. Checkboxes only appear on cards after I press **Select**, to pick tasks for a bulk status change.
 9. I can **delete** a task after confirming.
 10. Open tasks past their due date are highlighted as **overdue**.
 11. I only ever see and change **my own** tasks. Another user's task behaves as if it doesn't exist.
 12. I can give a task a **priority**: *Low*, *Medium* or *High* (defaults to *Medium*). I choose it when I create or edit a task, each card shows it as a badge, and marking a task done keeps its priority. Tasks created before priorities existed show as *Medium*.
-13. I can **select several tasks** and give them all the same status in one action. Either every selected task changes or none does, and only tasks shown under the current filter are changed.
+13. I can **select several tasks** and give them all the same status in one action. Either every selected task changes or none does.
+14. I can **move a task to another column** by dragging its card there, which changes its status. The card moves at once; if saving fails, it goes back and I see why.
 
 ### Quality
 
-14. Invalid input shows a clear message next to the field it concerns.
-15. The app works on a phone and on a desktop.
+15. Invalid input shows a clear message next to the field it concerns.
+16. The app works on a phone and on a desktop.
 
 ## Mapping to the code
 
@@ -41,9 +42,11 @@
 | 2 | `AuthService.LoginAsync`, `Pbkdf2PasswordHasher` | `AuthServiceTests`, `Pbkdf2PasswordHasherTests`, `AuthEndpointsTests` |
 | 3 | `sessionStore`, `AuthProvider` | `http.test.ts` |
 | 4, 5, 7 | `TaskItem.Create/Update` | `TaskItemTests`, `TaskServiceTests`, `TaskForm.test.tsx` |
-| 6 | `SqliteTaskRepository.ListByUserAsync` | `SqliteTaskRepositoryTests`, `TaskEndpointsTests` |
-| 8, 9, 10 | `TaskCard`, `TasksPage` | `TaskCard.test.tsx` |
+| 6 | `SqliteTaskRepository.ListByUserAsync`, `TaskBoard` | `SqliteTaskRepositoryTests`, `TaskEndpointsTests`, `TaskBoard.test.tsx` |
+| 8 | `TaskBoard`, `TaskCard` (checkbox only in selection mode) | `TaskBoard.test.tsx`, `TaskCard.test.tsx` |
+| 9, 10 | `TaskCard`, `TasksPage` | `TaskCard.test.tsx` |
 | 11 | `TaskService.GetOwnedAsync`, JWT `sub` claim | `TaskServiceTests`, `TaskEndpointsTests.Users_cannot_see_or_change_each_others_tasks` |
 | 12 | `TaskItem.Create/Update`, `TaskService`, `SqliteTaskRepository`, `DatabaseInitializer` (migration), `TaskForm`, `TaskCard`, `TasksPage` | `TaskItemTests`, `TaskServiceTests`, `SqliteTaskRepositoryTests`, `TaskEndpointsTests`, `TaskForm.test.tsx`, `TaskCard.test.tsx` |
 | 13 | `TaskItem.ChangeStatus`, `TaskService.UpdateStatusAsync`, `SqliteTaskRepository.UpdateManyAsync` (transaction), `PATCH /api/tasks/status`, `BulkStatusBar`, `TaskCard`, `TasksPage` | `TaskItemTests`, `TaskServiceTests`, `SqliteTaskRepositoryTests`, `TasksControllerTests`, `TaskEndpointsTests`, `BulkStatusBar.test.tsx`, `TaskCard.test.tsx` |
-| 14 | `ApiExceptionHandler`, `FormField`, `TaskForm` | `TaskEndpointsTests`, `TaskForm.test.tsx` |
+| 14 | `TaskBoard` (drag and drop), `useMoveTask` (optimistic, rolls back on error), `PATCH /api/tasks/status` | `TaskBoard.test.tsx`, `useTasks.test.tsx`, `TaskEndpointsTests` |
+| 15 | `ApiExceptionHandler`, `FormField`, `TaskForm` | `TaskEndpointsTests`, `TaskForm.test.tsx` |

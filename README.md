@@ -4,8 +4,8 @@ A full-stack task manager built for the Ballast Lane .NET technical exercise.
 
 - **Backend:** ASP.NET Core Web API (.NET 11), Clean Architecture, JWT authentication, SQLite through hand-written ADO.NET (**no Entity Framework, Dapper or MediatR**).
 - **Frontend:** React 19 + TypeScript + Vite, React Query for server state, React Router.
-- **Tests:** 157 backend tests (xUnit, NSubstitute, FluentAssertions, in-memory API host) and 47 frontend tests (Vitest, Testing Library).
-- **Features:** register and log in; create, read, update and delete tasks with a title, description, status, **priority** and due date; filter by status; overdue highlighting.
+- **Tests:** 157 backend tests (xUnit, NSubstitute, FluentAssertions, in-memory API host) and 56 frontend tests (Vitest, Testing Library).
+- **Features:** register and log in; create, read, update and delete tasks with a title, description, status, **priority** and due date; a board with one column per status, where dragging a card to another column changes its status; changing the status of several tasks at once; overdue highlighting.
 
 Related docs:
 
@@ -202,14 +202,15 @@ Task request and response bodies use these fields. Enums are sent as text.
 web/src/
   api/             fetch wrapper (token, Problem Details -> ApiError), typed endpoint clients
   auth/            AuthProvider (session + auto-logout on expiry/401), RequireAuth route guard
-  features/tasks/  React Query hooks, TaskForm, TaskCard, StatusFilter, BulkStatusBar
+  features/tasks/  React Query hooks, TaskForm, TaskCard, TaskBoard, BulkStatusBar
   components/      Layout, Modal, FormField (accessible label/error wiring)
   pages/           LoginPage, RegisterPage, TasksPage
 ```
 
-- **Server state** (tasks) lives in the React Query cache, and mutations invalidate it. **Client state** (open dialog, current filter) is plain `useState`. There is no global store because none is needed.
+- **Server state** (tasks) lives in the React Query cache, and mutations invalidate it. **Client state** (open dialog, selected cards, the card being dragged) is plain `useState`. There is no global store because none is needed.
 - Forms validate on the client for instant feedback. The API is still the source of truth, and its field errors are shown next to the matching inputs.
 - The layout is responsive: cards and dialogs rearrange below 600px, and the dialog becomes a bottom sheet on phones. There's a dark mode via `prefers-color-scheme`.
+- **The board** uses the browser's native drag and drop, so it needs no extra library. Native drag needs a mouse; on a phone, cards change column through **Select** and the bulk status bar, or the status field when editing. A move is optimistic: the card changes column at once, is sent as `PATCH /api/tasks/status`, and goes back with an error message if the server refuses. Below 900px the columns stack.
 - Accessibility: labelled fields with `aria-invalid` / `aria-describedby`, `role="alert"` errors, a focus-managed modal that closes on Escape, and descriptive button names ("Edit Write README").
 
 ---
@@ -223,7 +224,7 @@ Tests are organized around business rules: each acceptance criterion and edge ca
 | `TaskManager.Application.Tests` (81) | Domain entities and both services | Pure unit tests. Repositories, hasher and token service are NSubstitute mocks, and the clock is a fixed `TimeProvider`. |
 | `TaskManager.Infrastructure.Tests` (45) | Repositories, schema and migration, seeder, PBKDF2, JWT | Against a **real SQLite file** per test, because mocking the database wouldn't prove the SQL works. Includes an SQL-injection test, a foreign-key test, a transaction rollback test and a test that upgrades a pre-priority database. |
 | `TaskManager.Api.Tests` (31) | Controllers in isolation, plus the full HTTP pipeline | Controller unit tests with a mocked service, and `WebApplicationFactory` integration tests: register -> login -> CRUD, bulk status change, 401s, validation and user isolation. |
-| `web` (47) | HTTP client, auth storage, form validation, task card, bulk status bar, login page | Vitest + Testing Library, querying the way a user would (by role and label). |
+| `web` (56) | HTTP client, auth storage, form validation, task card, board drag and drop, optimistic moves with rollback, bulk status bar, login page | Vitest + Testing Library, querying the way a user would (by role and label). |
 
 ### Task priority: built test-first
 

@@ -3,12 +3,13 @@ import { ApiError } from '../api/http'
 import { TaskStatus, type Task, type TaskInput } from '../api/types'
 import { Modal } from '../components/Modal'
 import { BulkStatusBar } from '../features/tasks/BulkStatusBar'
-import { StatusFilter } from '../features/tasks/StatusFilter'
+import { TaskBoard } from '../features/tasks/TaskBoard'
 import { TaskCard } from '../features/tasks/TaskCard'
 import { TaskForm } from '../features/tasks/TaskForm'
 import {
   useCreateTask,
   useDeleteTask,
+  useMoveTask,
   useTasks,
   useUpdateTask,
   useUpdateTasksStatus,
@@ -17,20 +18,21 @@ import {
 type Editor = { mode: 'create' } | { mode: 'edit'; task: Task } | null
 
 export function TasksPage() {
-  const [filter, setFilter] = useState<TaskStatus | null>(null)
   const [editor, setEditor] = useState<Editor>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
-  const tasksQuery = useTasks(filter)
+  // The board shows every status side by side, so it always loads the unfiltered list.
+  const tasksQuery = useTasks(null)
   const createTask = useCreateTask()
   const updateTask = useUpdateTask()
   const deleteTask = useDeleteTask()
   const updateStatuses = useUpdateTasksStatus()
+  const moveTask = useMoveTask()
 
   // Selection mode: null when off, otherwise the ids picked so far.
   const [selected, setSelected] = useState<Set<string> | null>(null)
   const visibleTasks = tasksQuery.data ?? []
-  // Only tasks still on screen count, so changing the filter can't apply to hidden tasks.
+  // Ignore ids of tasks that have since disappeared (deleted in another tab, for example).
   const selectedIds = selected ? visibleTasks.filter((t) => selected.has(t.id)).map((t) => t.id) : []
 
   const busyId = updateTask.isPending ? updateTask.variables?.id : deleteTask.isPending ? deleteTask.variables : null
@@ -53,20 +55,11 @@ export function TasksPage() {
     else updateTask.mutate({ id: editor.task.id, input }, { onSuccess: closeEditor })
   }
 
-  function handleToggleDone(task: Task) {
+  function handleMove(task: Task, status: TaskStatus) {
     setActionError(null)
-    updateTask.mutate(
-      {
-        id: task.id,
-        input: {
-          title: task.title,
-          description: task.description,
-          dueDate: task.dueDate,
-          priority: task.priority,
-          status: task.status === TaskStatus.Done ? TaskStatus.Todo : TaskStatus.Done,
-        },
-      },
-      { onError: (error) => setActionError(error.message) },
+    moveTask.mutate(
+      { task, status },
+      { onError: (error) => setActionError(`Could not move "${task.title}": ${error.message}`) },
     )
   }
 
@@ -116,8 +109,6 @@ export function TasksPage() {
         </div>
       </div>
 
-      <StatusFilter value={filter} onChange={setFilter} />
-
       {selected && (
         <BulkStatusBar
           selectedCount={selectedIds.length}
@@ -149,22 +140,22 @@ export function TasksPage() {
         </div>
       ) : tasksQuery.data.length === 0 ? (
         <div className="empty-state">
-          <p>{filter ? 'No tasks with this status.' : 'No tasks yet. Create your first one!'}</p>
+          <p>No tasks yet. Create your first one!</p>
         </div>
       ) : (
-        <ul className="task-list" aria-label="Tasks">
-          {tasksQuery.data.map((task) => (
+        <TaskBoard
+          tasks={tasksQuery.data}
+          onMove={handleMove}
+          renderCard={(task) => (
             <TaskCard
-              key={task.id}
               task={task}
               busy={busyId === task.id}
-              onToggleDone={handleToggleDone}
               onEdit={(t) => openEditor({ mode: 'edit', task: t })}
               onDelete={handleDelete}
               selection={selected ? { selected: selected.has(task.id), onChange: handleSelectChange } : undefined}
             />
-          ))}
-        </ul>
+          )}
+        />
       )}
 
       {editor && (

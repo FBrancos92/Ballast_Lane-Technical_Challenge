@@ -107,7 +107,7 @@ p {
 }
 
 .app-main {
-  max-width: 860px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: clamp(1rem, 4vw, 2rem);
 }
@@ -350,37 +350,110 @@ a {
   box-shadow: 0 0 0 1px var(--primary);
 }
 
-.status-filter {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 1.25rem;
+/* ---------- Board ---------- */
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: start;
 }
 
-.chip {
-  padding: 0.35rem 0.9rem;
-  border: 1px solid var(--border);
+.board-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 12rem;
+  padding: 0.75rem;
+  background: color-mix(in srgb, var(--muted) 8%, transparent);
+  border: 2px dashed transparent;
+  border-radius: var(--radius);
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.board-column.drop-target {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+}
+
+.board-column-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.25rem;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.status-col-Todo .board-column-title { color: var(--muted); }
+.status-col-InProgress .board-column-title { color: var(--primary); }
+.status-col-Done .board-column-title { color: var(--success); }
+
+.board-count {
+  min-width: 1.6rem;
+  padding: 0 0.45rem;
   border-radius: 999px;
   background: var(--surface);
+  border: 1px solid var(--border);
   color: var(--muted);
-  font: inherit;
-  font-size: 0.875rem;
-  cursor: pointer;
+  font-size: 0.8rem;
+  text-align: center;
 }
 
-.chip.active {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: var(--primary-text);
-}
-
-.task-list {
+.board-list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+}
+
+.board-item {
+  cursor: grab;
+}
+
+.board-item.dragging {
+  opacity: 0.45;
+  cursor: grabbing;
+}
+
+.board-empty {
+  padding: 1.5rem 0.5rem;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+/* Columns are narrow, so a card puts its actions on their own row.
+   The checkbox column only exists in selection mode. */
+.board .task-card {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.board .task-card.is-selectable {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.board .task-actions {
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.board .task-actions:empty {
+  display: none;
+}
+
+@media (width <= 900px) {
+  .board {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .board-column {
+    min-height: 0;
+  }
 }
 
 .task-card {

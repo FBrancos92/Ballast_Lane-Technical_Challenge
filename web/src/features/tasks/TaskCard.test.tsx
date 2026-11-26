@@ -16,11 +16,11 @@ const task: Task = {
 }
 
 function renderCard(overrides: Partial<Task> = {}) {
-  const handlers = { onToggleDone: vi.fn(), onEdit: vi.fn(), onDelete: vi.fn() }
+  const handlers = { onEdit: vi.fn(), onDelete: vi.fn() }
   render(
-    <ul>
+    <div>
       <TaskCard task={{ ...task, ...overrides }} busy={false} {...handlers} />
-    </ul>,
+    </div>,
   )
   return { ...handlers, user: userEvent.setup() }
 }
@@ -46,12 +46,10 @@ describe('TaskCard', () => {
     expect(screen.queryByText(/Overdue/)).not.toBeInTheDocument()
   })
 
-  it('toggles done with the checkbox', async () => {
-    const { onToggleDone, user } = renderCard()
+  it('has no checkbox outside selection mode', () => {
+    renderCard()
 
-    await user.click(screen.getByRole('checkbox', { name: 'Mark "Write README" as done' }))
-
-    expect(onToggleDone).toHaveBeenCalledWith(expect.objectContaining({ id: '1' }))
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
   })
 
   it('asks for confirmation before deleting', async () => {
@@ -88,20 +86,25 @@ describe('TaskCard', () => {
     expect(screen.getByText('High priority')).toBeInTheDocument()
   })
 
+  it('has no status menu: moving between columns is done by dragging', () => {
+    renderCard()
+
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+  })
+
   describe('in selection mode', () => {
     function renderSelectable(selected = false) {
       const onSelectChange = vi.fn()
       render(
-        <ul>
+        <div>
           <TaskCard
             task={task}
             busy={false}
-            onToggleDone={vi.fn()}
             onEdit={vi.fn()}
             onDelete={vi.fn()}
             selection={{ selected, onChange: onSelectChange }}
           />
-        </ul>,
+        </div>,
       )
       return { onSelectChange, user: userEvent.setup() }
     }
