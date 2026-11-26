@@ -8,23 +8,36 @@ interface TaskCardProps {
   onToggleDone: (task: Task) => void
   onEdit: (task: Task) => void
   onDelete: (task: Task) => void
+  /** When set, the card is in selection mode: a select checkbox replaces done, edit and delete. */
+  selection?: { selected: boolean; onChange: (task: Task, selected: boolean) => void }
 }
 
-export function TaskCard({ task, busy, onToggleDone, onEdit, onDelete }: TaskCardProps) {
+export function TaskCard({ task, busy, onToggleDone, onEdit, onDelete, selection }: TaskCardProps) {
   const [confirming, setConfirming] = useState(false)
   const done = task.status === TaskStatus.Done
   const overdue = !done && isOverdue(task.dueDate)
+  const classes = ['task-card', done && 'is-done', selection?.selected && 'is-selected'].filter(Boolean).join(' ')
 
   return (
-    <li className={`task-card${done ? ' is-done' : ''}`}>
-      <input
-        type="checkbox"
-        className="task-check"
-        checked={done}
-        disabled={busy}
-        onChange={() => onToggleDone(task)}
-        aria-label={done ? `Mark "${task.title}" as not done` : `Mark "${task.title}" as done`}
-      />
+    <li className={classes}>
+      {selection ? (
+        <input
+          type="checkbox"
+          className="task-check select-check"
+          checked={selection.selected}
+          onChange={(e) => selection.onChange(task, e.target.checked)}
+          aria-label={`Select "${task.title}"`}
+        />
+      ) : (
+        <input
+          type="checkbox"
+          className="task-check"
+          checked={done}
+          disabled={busy}
+          onChange={() => onToggleDone(task)}
+          aria-label={done ? `Mark "${task.title}" as not done` : `Mark "${task.title}" as done`}
+        />
+      )}
 
       <div className="task-body">
         <h3 className="task-title">{task.title}</h3>
@@ -42,7 +55,7 @@ export function TaskCard({ task, busy, onToggleDone, onEdit, onDelete }: TaskCar
       </div>
 
       <div className="task-actions">
-        {confirming ? (
+        {selection ? null : confirming ? (
           <>
             <span className="confirm-text">Delete?</span>
             <button type="button" className="button danger small" disabled={busy} onClick={() => onDelete(task)}>

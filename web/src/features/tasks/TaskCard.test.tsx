@@ -87,4 +87,46 @@ describe('TaskCard', () => {
 
     expect(screen.getByText('High priority')).toBeInTheDocument()
   })
+
+  describe('in selection mode', () => {
+    function renderSelectable(selected = false) {
+      const onSelectChange = vi.fn()
+      render(
+        <ul>
+          <TaskCard
+            task={task}
+            busy={false}
+            onToggleDone={vi.fn()}
+            onEdit={vi.fn()}
+            onDelete={vi.fn()}
+            selection={{ selected, onChange: onSelectChange }}
+          />
+        </ul>,
+      )
+      return { onSelectChange, user: userEvent.setup() }
+    }
+
+    it('shows a select checkbox instead of done, and hides edit and delete', () => {
+      renderSelectable()
+
+      expect(screen.getByRole('checkbox', { name: 'Select "Write README"' })).not.toBeChecked()
+      expect(screen.queryByRole('checkbox', { name: /as done/ })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Edit Write README' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Delete Write README' })).not.toBeInTheDocument()
+    })
+
+    it('reports selection changes', async () => {
+      const { onSelectChange, user } = renderSelectable()
+
+      await user.click(screen.getByRole('checkbox', { name: 'Select "Write README"' }))
+
+      expect(onSelectChange).toHaveBeenCalledWith(expect.objectContaining({ id: '1' }), true)
+    })
+
+    it('shows when it is selected', () => {
+      renderSelectable(true)
+
+      expect(screen.getByRole('checkbox', { name: 'Select "Write README"' })).toBeChecked()
+    })
+  })
 })

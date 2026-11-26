@@ -2,10 +2,17 @@ import { useState } from 'react'
 import { ApiError } from '../api/http'
 import { TaskStatus, type Task, type TaskInput } from '../api/types'
 import { Modal } from '../components/Modal'
+import { BulkStatusBar } from '../features/tasks/BulkStatusBar'
 import { StatusFilter } from '../features/tasks/StatusFilter'
 import { TaskCard } from '../features/tasks/TaskCard'
 import { TaskForm } from '../features/tasks/TaskForm'
-import { useCreateTask, useDeleteTask, useTasks, useUpdateTask } from '../features/tasks/useTasks'
+import {
+  useCreateTask,
+  useDeleteTask,
+  useTasks,
+  useUpdateTask,
+  useUpdateTasksStatus,
+} from '../features/tasks/useTasks'
 
 type Editor = { mode: 'create' } | { mode: 'edit'; task: Task } | null
 
@@ -18,6 +25,13 @@ export function TasksPage() {
   const createTask = useCreateTask()
   const updateTask = useUpdateTask()
   const deleteTask = useDeleteTask()
+  const updateStatuses = useUpdateTasksStatus()
+
+  // Selection mode: null when off, otherwise the ids picked so far.
+  const [selected, setSelected] = useState<Set<string> | null>(null)
+  const visibleTasks = tasksQuery.data ?? []
+  // Only tasks still on screen count, so changing the filter can't apply to hidden tasks.
+  const selectedIds = selected ? visibleTasks.filter((t) => selected.has(t.id)).map((t) => t.id) : []
 
   const busyId = updateTask.isPending ? updateTask.variables?.id : deleteTask.isPending ? deleteTask.variables : null
   const saving = createTask.isPending || updateTask.isPending
@@ -56,6 +70,31 @@ export function TasksPage() {
     )
   }
 
+  function startSelecting() {
+    setActionError(null)
+    setSelected(new Set())
+  }
+
+  function handleSelectChange(task: Task, isSelected: boolean) {
+    setSelected((current) => {
+      const next = new Set(current)
+      if (isSelected) next.add(task.id)
+      else next.delete(task.id)
+      return next
+    })
+  }
+
+  function handleApplyStatus(status: TaskStatus) {
+    setActionError(null)
+    updateStatuses.mutate(
+      { ids: selectedIds, status },
+      {
+        onSuccess: () => setSelected(null),
+        onError: (error) => setActionError(error.message),
+      },
+    )
+  }
+
   function handleDelete(task: Task) {
     setActionError(null)
     deleteTask.mutate(task.id, { onError: (error) => setActionError(error.message) })
@@ -65,12 +104,31 @@ export function TasksPage() {
     <section className="tasks-page" aria-labelledby="tasks-heading">
       <div className="page-header">
         <h1 id="tasks-heading">My tasks</h1>
-        <button type="button" className="button primary" onClick={() => openEditor({ mode: 'create' })}>
-          + New task
-        </button>
+        <div className="page-actions">
+          {!selected && visibleTasks.length > 0 && (
+            <button type="button" className="button secondary" onClick={startSelecting}>
+              Select
+            </button>
+          )}
+          <button type="button" className="button primary" onClick={() => openEditor({ mode: 'create' })}>
+            + New task
+          </button>
+        </div>
       </div>
 
       <StatusFilter value={filter} onChange={setFilter} />
+
+      {selected && (
+        <BulkStatusBar
+          selectedCount={selectedIds.length}
+          totalCount={visibleTasks.length}
+          applying={updateStatuses.isPending}
+          onApply={handleApplyStatus}
+          onSelectAll={() => setSelected(new Set(visibleTasks.map((t) => t.id)))}
+          onClear={() => setSelected(new Set())}
+          onCancel={() => setSelected(null)}
+        />
+      )}
 
       {actionError && (
         <div className="alert" role="alert">
@@ -103,6 +161,7 @@ export function TasksPage() {
               onToggleDone={handleToggleDone}
               onEdit={(t) => openEditor({ mode: 'edit', task: t })}
               onDelete={handleDelete}
+              selection={selected ? { selected: selected.has(task.id), onChange: handleSelectChange } : undefined}
             />
           ))}
         </ul>
