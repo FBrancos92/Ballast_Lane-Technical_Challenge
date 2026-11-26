@@ -31,6 +31,7 @@ export function TaskCard({ task, busy, onToggleDone, onEdit, onDelete }: TaskCar
         {task.description && <p className="task-description">{task.description}</p>}
         <div className="task-meta">
           <span className={`badge status-${task.status}`}>{STATUS_LABELS[task.status]}</span>
+          <span className={`badge priority-${task.priority}`}>{task.priority} priority</span>
           {task.dueDate && (
             <span className={`due${overdue ? ' overdue' : ''}`}>
               {overdue ? 'Overdue · ' : 'Due '}

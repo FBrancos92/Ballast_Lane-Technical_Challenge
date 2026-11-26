@@ -1,6 +1,14 @@
 import { useState, type FormEvent } from 'react'
 import type { FieldErrors } from '../../api/http'
-import { STATUS_LABELS, TASK_STATUSES, TaskStatus, type Task, type TaskInput } from '../../api/types'
+import {
+  STATUS_LABELS,
+  TASK_PRIORITIES,
+  TASK_STATUSES,
+  TaskPriority,
+  TaskStatus,
+  type Task,
+  type TaskInput,
+} from '../../api/types'
 import { FormField } from '../../components/FormField'
 import { todayIso } from './dates'
 
@@ -25,6 +33,7 @@ export function TaskForm({ initial, submitLabel, submitting, serverErrors = {}, 
   const [title, setTitle] = useState(initial?.title ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
   const [status, setStatus] = useState<TaskStatus>(initial?.status ?? TaskStatus.Todo)
+  const [priority, setPriority] = useState<TaskPriority>(initial?.priority ?? TaskPriority.Medium)
   const [dueDate, setDueDate] = useState(initial?.dueDate ?? '')
   const [clientErrors, setClientErrors] = useState<Record<string, string>>({})
 
@@ -51,6 +60,7 @@ export function TaskForm({ initial, submitLabel, submitting, serverErrors = {}, 
       title: title.trim(),
       description: description.trim() || null,
       status,
+      priority,
       dueDate: dueDate || null,
     })
   }
@@ -101,6 +111,24 @@ export function TaskForm({ initial, submitLabel, submitting, serverErrors = {}, 
               {TASK_STATUSES.map((s) => (
                 <option key={s} value={s}>
                   {STATUS_LABELS[s]}
+                </option>
+              ))}
+            </select>
+          )}
+        </FormField>
+          
+        <FormField label="Priority" error={errorFor('priority')}>
+          {({ id, describedBy, invalid }) => (
+            <select
+              id={id}
+              value={priority}
+              onChange={(e) => setPriority(e.target.value as TaskPriority)}
+              aria-describedby={describedBy}
+              aria-invalid={invalid}
+            >
+              {TASK_PRIORITIES.map((p) => (
+                <option key={p} value={p}>
+                  {p}
                 </option>
               ))}
             </select>
