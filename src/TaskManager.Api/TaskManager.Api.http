@@ -31,6 +31,14 @@ Content-Type: application/json
 
 { "title": "Try the API", "description": "From the .http file", "status": "Todo", "dueDate": null }
 
+### Change the status of several tasks at once (what the board does when you drag a card).
+### Paste two "id" values from "List tasks" above. All or nothing: an unknown id returns 404 and nothing changes.
+PATCH {{baseUrl}}/api/tasks/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "ids": ["paste-task-id-1", "paste-task-id-2"], "status": "Done" }
+
 ### Validation error (400)
 POST {{baseUrl}}/api/tasks
 Authorization: Bearer {{token}}
