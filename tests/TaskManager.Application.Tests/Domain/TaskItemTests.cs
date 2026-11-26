@@ -152,4 +152,27 @@ public class TaskItemTests
         task.Status.Should().Be(TaskItemStatus.Todo);
         task.UpdatedAt.Should().Be(Now);
     }
+        [Fact]
+    public void Create_sets_the_given_priority()
+    {
+        var task = TaskItem.Create(UserId, "Title", null, TaskItemStatus.Todo, null, Now, TaskPriority.High);
+
+        task.Priority.Should().Be(TaskPriority.High);
+    }
+
+    [Fact]
+    public void Create_without_priority_defaults_to_medium()
+    {
+        var task = TaskItem.Create(UserId, "Title", null, TaskItemStatus.Todo, null, Now);
+
+        task.Priority.Should().Be(TaskPriority.Medium);
+    }
+
+    [Fact]
+    public void Create_with_undefined_priority_fails()
+    {
+        var act = () => TaskItem.Create(UserId, "Title", null, TaskItemStatus.Todo, null, Now, (TaskPriority)42);
+
+        act.Should().Throw<DomainValidationException>().Which.Errors.Should().ContainKey("Priority");
+    }
 }
