@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
+using TaskManager.Domain.Tasks;
 using TaskManager.Infrastructure.Persistence;
 using TaskManager.Infrastructure.Security;
 
@@ -46,6 +47,18 @@ public sealed class DataSeederTests : IAsyncLifetime
         await _sut.SeedAsync();
 
         (await _db.CountAsync("Tasks")).Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task Seeded_demo_tasks_fill_every_board_column_and_use_every_priority()
+    {
+        await _sut.SeedAsync();
+
+        var demo = await _users.GetByUsernameAsync(DataSeeder.DemoUsername);
+        var demoTasks = await new SqliteTaskRepository(_db.ConnectionFactory).ListByUserAsync(demo!.Id);
+
+        demoTasks.Select(t => t.Status).Distinct().Should().BeEquivalentTo(Enum.GetValues<TaskItemStatus>());
+        demoTasks.Select(t => t.Priority).Distinct().Should().BeEquivalentTo(Enum.GetValues<TaskPriority>());
     }
 
     [Fact]
